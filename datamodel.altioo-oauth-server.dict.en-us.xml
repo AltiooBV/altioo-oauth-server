@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<itop_design xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.2">
+  <!--
+    Dictionary for "EN US". Found by the /^datamodel(.*)\.xml$/i glob on the module
+    root, so it is listed nowhere and must stay in the root.
+  -->
+  <dictionaries>
+    <dictionary id="EN US">
+      <entries>
+        <entry id="Class:AltiooOAuthClient" _delta="force"><![CDATA[OAuth client]]></entry>
+        <entry id="Class:AltiooOAuthClient+" _delta="force"><![CDATA[An application that may ask people to connect it to this iTop]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:client_id" _delta="force"><![CDATA[Client ID]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:client_id+" _delta="force"><![CDATA[Public identifier the application sends]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:client_name" _delta="force"><![CDATA[Name]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:client_name+" _delta="force"><![CDATA[Chosen by the application itself, not checked]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:redirect_uris" _delta="force"><![CDATA[Redirect URIs]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:redirect_uris+" _delta="force"><![CDATA[Where people are sent back after they answer, as a JSON list]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:source" _delta="force"><![CDATA[Registered by]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:source+" _delta="force"><![CDATA[How this client came to exist]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:source/Value:dcr" _delta="force"><![CDATA[Itself]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:source/Value:dcr+" _delta="force"><![CDATA[Dynamic client registration (RFC 7591)]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:source/Value:manual" _delta="force"><![CDATA[An administrator]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:source/Value:manual+" _delta="force"><![CDATA[Created in the console]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:status" _delta="force"><![CDATA[Status]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:status+" _delta="force"><![CDATA[A disabled client cannot start or renew a connection]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:status/Value:active" _delta="force"><![CDATA[Active]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:status/Value:active+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:status/Value:disabled" _delta="force"><![CDATA[Disabled]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:status/Value:disabled+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:registered_from_ip" _delta="force"><![CDATA[Registered from]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:registered_from_ip+" _delta="force"><![CDATA[IP address the registration came from]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:creation_date" _delta="force"><![CDATA[Created]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:creation_date+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:last_used_date" _delta="force"><![CDATA[Last used]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:last_used_date+" _delta="force"><![CDATA[Last code exchange or refresh]]></entry>
+        <entry id="Class:AltiooOAuthGrant" _delta="force"><![CDATA[OAuth connection]]></entry>
+        <entry id="Class:AltiooOAuthGrant+" _delta="force"><![CDATA[What a person allowed one application to do, for one resource]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:client_id" _delta="force"><![CDATA[Client]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:client_id+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:user_id" _delta="force"><![CDATA[User]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:user_id+" _delta="force"><![CDATA[The person who allowed it]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:resource" _delta="force"><![CDATA[Resource]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:resource+" _delta="force"><![CDATA[Key of the resource in the module settings]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:scope" _delta="force"><![CDATA[Scopes]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:scope+" _delta="force"><![CDATA[Personal token scopes granted]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:personal_token_id" _delta="force"><![CDATA[Personal token]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:personal_token_id+" _delta="force"><![CDATA[ID of the personal token this connection owns, 0 once it has ended]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:refresh_secret" _delta="force"><![CDATA[Refresh token]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:refresh_secret+" _delta="force"><![CDATA[Stored as a one-way hash only]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:previous_refresh_secret" _delta="force"><![CDATA[Previous refresh token]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:previous_refresh_secret+" _delta="force"><![CDATA[Stored as a one-way hash only]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:status" _delta="force"><![CDATA[Status]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:status+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:status/Value:active" _delta="force"><![CDATA[Active]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:status/Value:active+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:status/Value:ended" _delta="force"><![CDATA[Ended]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:status/Value:ended+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason" _delta="force"><![CDATA[Ended because]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:expired" _delta="force"><![CDATA[Maximum lifetime reached]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:expired+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:idle" _delta="force"><![CDATA[Unused for too long]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:idle+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:disconnected" _delta="force"><![CDATA[Token deleted]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:disconnected+" _delta="force"><![CDATA[The personal token was deleted, under My Account or by an administrator]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:account" _delta="force"><![CDATA[Account no longer allowed]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:account+" _delta="force"><![CDATA[Disabled, or no longer allowed personal tokens]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:reuse" _delta="force"><![CDATA[Credential reused]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:reuse+" _delta="force"><![CDATA[A code or refresh token was presented again: a copy is in other hands]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:revoked" _delta="force"><![CDATA[Revoked]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:revoked+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:creation_date" _delta="force"><![CDATA[Connected]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:creation_date+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:expiration_date" _delta="force"><![CDATA[Ends at the latest]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:expiration_date+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:last_refresh_date" _delta="force"><![CDATA[Last renewed]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:last_refresh_date+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:last_refresh_ip" _delta="force"><![CDATA[Last renewed from]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:last_refresh_ip+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthCode" _delta="force"><![CDATA[OAuth authorization code]]></entry>
+        <entry id="Class:AltiooOAuthCode+" _delta="force"><![CDATA[Single-use code a client exchanges for its first tokens]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:code_secret" _delta="force"><![CDATA[Code]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:code_secret+" _delta="force"><![CDATA[Stored as a one-way hash only]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:client_id" _delta="force"><![CDATA[Client]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:client_id+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:user_id" _delta="force"><![CDATA[User]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:user_id+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:redirect_uri" _delta="force"><![CDATA[Redirect URI]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:redirect_uri+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:code_challenge" _delta="force"><![CDATA[PKCE challenge]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:code_challenge+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:resource" _delta="force"><![CDATA[Resource]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:resource+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:scope" _delta="force"><![CDATA[Scopes]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:scope+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:expiration_date" _delta="force"><![CDATA[Expires]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:expiration_date+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:grant_id" _delta="force"><![CDATA[Connection]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:grant_id+" _delta="force"><![CDATA[ID of the connection the code produced, 0 while unused]]></entry>
+        <entry id="Menu:AltiooOAuthClient" _delta="force"><![CDATA[OAuth clients]]></entry>
+        <entry id="Menu:AltiooOAuthClient+" _delta="force"><![CDATA[Applications registered with this authorization server]]></entry>
+        <entry id="Menu:AltiooOAuthGrant" _delta="force"><![CDATA[OAuth connections]]></entry>
+        <entry id="Menu:AltiooOAuthGrant+" _delta="force"><![CDATA[Active connections between people and applications]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:Title" _delta="force"><![CDATA[Connect an application]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:Who" _delta="force"><![CDATA[An application that calls itself %1$s wants to act as %2$s on this iTop.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:SelfDeclared" _delta="force"><![CDATA[iTop cannot check that name: the application chose it. Check where you will be sent back instead.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:ReturnTo" _delta="force"><![CDATA[When you answer, you will be sent back to:]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:Resource" _delta="force"><![CDATA[It asks for access to %1$s.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:Permissions" _delta="force"><![CDATA[What it may do]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:Forced" _delta="force"><![CDATA[Always included on this iTop: %1$s.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:Lifetime" _delta="force"><![CDATA[The connection lasts at most %1$d days, and ends sooner if it is unused for %2$d days.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:Allow" _delta="force"><![CDATA[Allow]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:Deny" _delta="force"><![CDATA[Deny]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:Disconnect" _delta="force"><![CDATA[You can disconnect it at any time: delete its token under My Account, Personal Tokens.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:RequestExpired" _delta="force"><![CDATA[Connection request expired]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:RequestExpired+" _delta="force"><![CDATA[Start the connection again from the application.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:UnknownClient" _delta="force"><![CDATA[Unknown application]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:UnknownClient+" _delta="force"><![CDATA[This connection request does not come from an application registered on this iTop, or asks to send you back somewhere it did not register.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:InvalidRequest" _delta="force"><![CDATA[Invalid request]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:InvalidRequest+" _delta="force"><![CDATA[The application sent a request this iTop does not accept. It must use the authorization code flow with PKCE (S256).]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:UnknownResource" _delta="force"><![CDATA[Unknown resource]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:UnknownResource+" _delta="force"><![CDATA[The application asked for access to something this iTop does not give access to.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:PortalUser" _delta="force"><![CDATA[Not available for portal accounts]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:PortalUser+" _delta="force"><![CDATA[Your account can use only the portal. Ask your iTop administrator if you need to connect an application.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:TokensNotAllowed" _delta="force"><![CDATA[Personal tokens not allowed]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:TokensNotAllowed+" _delta="force"><![CDATA[Connecting an application gives it a personal token, and your profiles do not allow personal tokens on this iTop. Ask your iTop administrator.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:NothingSelected" _delta="force"><![CDATA[Nothing selected]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:NothingSelected+" _delta="force"><![CDATA[Tick at least one permission, or deny. Start the connection again from the application.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:Error" _delta="force"><![CDATA[Something went wrong]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:Error+" _delta="force"><![CDATA[The connection could not be made. Try again; if it fails again, tell your iTop administrator, who will find the detail in the iTop log.]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:grant_list" _delta="force"><![CDATA[Connections]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:grant_list+" _delta="force"><![CDATA[Every connection made with this client, active or ended]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_date" _delta="force"><![CDATA[Ended]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_date+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:withdrawn" _delta="force"><![CDATA[Disconnected by the user]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:withdrawn+" _delta="force"><![CDATA[Ended from My Account, Connected applications]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Stimulus:ev_revoke" _delta="force"><![CDATA[Revoke]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Stimulus:ev_revoke+" _delta="force"><![CDATA[End this connection now and delete its personal token]]></entry>
+        <entry id="UI:AltiooOAuthServer:MyAccount:Title" _delta="force"><![CDATA[Connected applications]]></entry>
+        <entry id="UI:AltiooOAuthServer:MyAccount:Intro" _delta="force"><![CDATA[Applications you allowed to act as you on this iTop. Disconnecting one deletes its personal token: it stops working at once and has to ask you again.]]></entry>
+        <entry id="UI:AltiooOAuthServer:MyAccount:Empty" _delta="force"><![CDATA[No application is connected.]]></entry>
+        <entry id="UI:AltiooOAuthServer:MyAccount:Application" _delta="force"><![CDATA[Application]]></entry>
+        <entry id="UI:AltiooOAuthServer:MyAccount:Scopes" _delta="force"><![CDATA[What it may do]]></entry>
+        <entry id="UI:AltiooOAuthServer:MyAccount:Since" _delta="force"><![CDATA[Connected]]></entry>
+        <entry id="UI:AltiooOAuthServer:MyAccount:LastUsed" _delta="force"><![CDATA[Last renewed]]></entry>
+        <entry id="UI:AltiooOAuthServer:MyAccount:Disconnect" _delta="force"><![CDATA[Disconnect]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:auth_method" _delta="force"><![CDATA[Authentication]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:auth_method+" _delta="force"><![CDATA[How the client proves who it is at the token endpoint]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:auth_method/Value:none" _delta="force"><![CDATA[None (public client)]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:auth_method/Value:none+" _delta="force"><![CDATA[Identified by its client ID alone, and bound by PKCE]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:auth_method/Value:client_secret_basic" _delta="force"><![CDATA[Secret, in an HTTP Basic header]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:auth_method/Value:client_secret_basic+" _delta="force"><![CDATA[client_secret_basic]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:auth_method/Value:client_secret_post" _delta="force"><![CDATA[Secret, in the request body]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:auth_method/Value:client_secret_post+" _delta="force"><![CDATA[client_secret_post]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:client_secret" _delta="force"><![CDATA[Client secret]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:client_secret+" _delta="force"><![CDATA[Type a long random value, and give the same value to the application. Stored as a one-way hash: it cannot be shown again.]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:pkce" _delta="force"><![CDATA[PKCE]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:pkce+" _delta="force"><![CDATA[Optional only for a client with a secret that cannot send PKCE]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:pkce/Value:required" _delta="force"><![CDATA[Required]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:pkce/Value:required+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:pkce/Value:optional" _delta="force"><![CDATA[Optional, for a client with a secret]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:pkce/Value:optional+" _delta="force"><![CDATA[The secret binds the code to the client instead]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:default_resource" _delta="force"><![CDATA[Default resource]]></entry>
+        <entry id="Class:AltiooOAuthClient/Attribute:default_resource+" _delta="force"><![CDATA[Key of the resource (mcp, rest, or one of the resources setting) used when the client does not say which it wants]]></entry>
+      </entries>
+    </dictionary>
+  </dictionaries>
+</itop_design>

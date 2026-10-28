@@ -1,0 +1,836 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<itop_design xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.2">
+  <!--
+    The three classes this authorization server keeps. None of them is in the
+    grant_by_profile category, so only an Administrator can read or change them
+    in the console: a person manages a connection through the PersonalToken it
+    owns, which authent-token already shows under My Account.
+
+    The secrets (a client never has one, but a code and a refresh token do) are
+    AttributeOneWayPassword: a salted password_hash, never a usable value, and
+    an iAttributeNoGroupBy, so altioo-mcp masks them too. A secret is handed out
+    as "<row key>.<secret>": the row is found by its key, and the secret checked
+    against the hash.
+
+    Fields that change on every refresh are not tracked: an hourly rotation
+    would otherwise write a change record per connection per hour.
+  -->
+  <classes>
+    <class id="AltiooOAuthClient" _delta="define">
+      <parent>cmdbAbstractObject</parent>
+      <properties>
+        <comment><![CDATA[/**
+ * An OAuth client: registered by itself through dynamic client registration
+ * (RFC 7591), always public; or created by an administrator in the console,
+ * usually confidential, with a secret - the "classic" OAuth integration most
+ * agent platforms ask to have configured by hand.
+ *
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */]]></comment>
+        <category>addon/authentication</category>
+        <abstract>false</abstract>
+        <key_type>autoincrement</key_type>
+        <db_table>priv_altioo_oauth_client</db_table>
+        <db_key_field>id</db_key_field>
+        <db_final_class_field/>
+        <naming>
+          <attributes>
+            <attribute id="client_name"/>
+          </attributes>
+        </naming>
+        <display_template/>
+        <icon/>
+        <reconciliation>
+          <attributes>
+            <attribute id="client_id"/>
+          </attributes>
+        </reconciliation>
+      </properties>
+      <fields>
+        <!-- Random and public: what the client sends as client_id. Generated, never typed (ComputeValues). -->
+        <field id="client_id" xsi:type="AttributeString">
+          <sql>client_id</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <validation_pattern>^[a-f0-9]{32}$</validation_pattern>
+          <max_size>32</max_size>
+        </field>
+        <!-- Self-declared by the client, and shown on the consent page as such. -->
+        <field id="client_name" xsi:type="AttributeString">
+          <sql>client_name</sql>
+          <default_value/>
+          <is_null_allowed>false</is_null_allowed>
+          <validation_pattern/>
+          <max_size>80</max_size>
+        </field>
+        <!--
+          Matched exactly. A JSON list when the client registered itself, each URI
+          on the allowlist at the time; one per line when an administrator typed
+          them, which needs no allowlist: the administrator is the allowlist.
+        -->
+        <field id="redirect_uris" xsi:type="AttributeText">
+          <sql>redirect_uris</sql>
+          <default_value/>
+          <is_null_allowed>false</is_null_allowed>
+        </field>
+        <field id="source" xsi:type="AttributeEnum">
+          <sql>source</sql>
+          <default_value>manual</default_value>
+          <is_null_allowed>false</is_null_allowed>
+          <values>
+            <value id="dcr">
+              <code>dcr</code>
+              <rank>10</rank>
+            </value>
+            <value id="manual">
+              <code>manual</code>
+              <rank>20</rank>
+            </value>
+          </values>
+        </field>
+        <!-- none: a public client, identified by client_id alone and bound by PKCE. -->
+        <field id="auth_method" xsi:type="AttributeEnum">
+          <sql>auth_method</sql>
+          <default_value>client_secret_basic</default_value>
+          <is_null_allowed>false</is_null_allowed>
+          <values>
+            <value id="none">
+              <code>none</code>
+              <rank>10</rank>
+            </value>
+            <value id="client_secret_basic">
+              <code>client_secret_basic</code>
+              <rank>20</rank>
+            </value>
+            <value id="client_secret_post">
+              <code>client_secret_post</code>
+              <rank>30</rank>
+            </value>
+          </values>
+        </field>
+        <field id="client_secret" xsi:type="AttributeOneWayPassword">
+          <sql>client_secret</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+        <!--
+          optional lets a confidential client that does not send PKCE connect: its
+          secret then binds the code to it. A public client always needs PKCE.
+        -->
+        <field id="pkce" xsi:type="AttributeEnum">
+          <sql>pkce</sql>
+          <default_value>required</default_value>
+          <is_null_allowed>false</is_null_allowed>
+          <values>
+            <value id="required">
+              <code>required</code>
+              <rank>10</rank>
+            </value>
+            <value id="optional">
+              <code>optional</code>
+              <rank>20</rank>
+            </value>
+          </values>
+        </field>
+        <!-- The resource key used when the client sends no resource parameter, as classic clients do not. -->
+        <field id="default_resource" xsi:type="AttributeString">
+          <sql>default_resource</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <validation_pattern/>
+          <max_size>64</max_size>
+        </field>
+        <field id="status" xsi:type="AttributeEnum">
+          <sql>status</sql>
+          <default_value>active</default_value>
+          <is_null_allowed>false</is_null_allowed>
+          <values>
+            <value id="active">
+              <code>active</code>
+              <rank>10</rank>
+            </value>
+            <value id="disabled">
+              <code>disabled</code>
+              <rank>20</rank>
+            </value>
+          </values>
+        </field>
+        <field id="registered_from_ip" xsi:type="AttributeString">
+          <sql>registered_from_ip</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <validation_pattern/>
+          <max_size>45</max_size>
+        </field>
+        <field id="creation_date" xsi:type="AttributeDateTime">
+          <sql>creation_date</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+        <field id="last_used_date" xsi:type="AttributeDateTime">
+          <sql>last_used_date</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <tracking_level>none</tracking_level>
+        </field>
+        <field id="grant_list" xsi:type="AttributeLinkedSet">
+          <linked_class>AltiooOAuthGrant</linked_class>
+          <ext_key_to_me>client_id</ext_key_to_me>
+          <edit_mode>none</edit_mode>
+          <count_min>0</count_min>
+          <count_max>0</count_max>
+        </field>
+      </fields>
+      <methods>
+        <method id="ComputeValues">
+          <comment>/** The client ID is generated, so that nobody picks a guessable one. */</comment>
+          <static>false</static>
+          <access>public</access>
+          <type>Overload-DBObject</type>
+          <code><![CDATA[	public function ComputeValues()
+	{
+		parent::ComputeValues();
+		if (strlen((string) $this->Get('client_id')) === 0) {
+			$this->Set('client_id', \Altioo\iTop\Extension\OAuthServer\Secret::NewClientId());
+		}
+		if (strlen((string) $this->Get('creation_date')) === 0) {
+			$this->SetCurrentDate('creation_date');
+		}
+	}]]></code>
+        </method>
+        <method id="GetAttributeFlags">
+          <static>false</static>
+          <access>public</access>
+          <type>Overload-DBObject</type>
+          <code><![CDATA[	public function GetAttributeFlags($sAttCode, &$aReasons = array(), $sTargetState = '')
+	{
+		$iFlags = parent::GetAttributeFlags($sAttCode, $aReasons, $sTargetState);
+		if (in_array($sAttCode, ['client_id', 'source', 'registered_from_ip', 'creation_date', 'last_used_date'], true)) {
+			$iFlags |= OPT_ATT_READONLY;
+		}
+
+		return $iFlags;
+	}]]></code>
+        </method>
+        <method id="GetInitialStateAttributeFlags">
+          <static>false</static>
+          <access>public</access>
+          <type>Overload-DBObject</type>
+          <code><![CDATA[	public function GetInitialStateAttributeFlags($sAttCode, &$aReasons = array())
+	{
+		$iFlags = parent::GetInitialStateAttributeFlags($sAttCode, $aReasons);
+		if (in_array($sAttCode, ['client_id', 'source', 'registered_from_ip', 'creation_date', 'last_used_date'], true)) {
+			$iFlags |= OPT_ATT_HIDDEN;
+		}
+
+		return $iFlags;
+	}]]></code>
+        </method>
+      </methods>
+      <presentation>
+        <details>
+          <items>
+            <item id="client_name">
+              <rank>10</rank>
+            </item>
+            <item id="client_id">
+              <rank>20</rank>
+            </item>
+            <item id="status">
+              <rank>30</rank>
+            </item>
+            <item id="source">
+              <rank>40</rank>
+            </item>
+            <item id="redirect_uris">
+              <rank>50</rank>
+            </item>
+            <item id="auth_method">
+              <rank>52</rank>
+            </item>
+            <item id="client_secret">
+              <rank>54</rank>
+            </item>
+            <item id="pkce">
+              <rank>56</rank>
+            </item>
+            <item id="default_resource">
+              <rank>58</rank>
+            </item>
+            <item id="registered_from_ip">
+              <rank>60</rank>
+            </item>
+            <item id="creation_date">
+              <rank>70</rank>
+            </item>
+            <item id="last_used_date">
+              <rank>80</rank>
+            </item>
+            <item id="grant_list">
+              <rank>90</rank>
+            </item>
+          </items>
+        </details>
+        <search>
+          <items>
+            <item id="client_name">
+              <rank>10</rank>
+            </item>
+            <item id="client_id">
+              <rank>20</rank>
+            </item>
+            <item id="status">
+              <rank>30</rank>
+            </item>
+            <item id="source">
+              <rank>40</rank>
+            </item>
+          </items>
+        </search>
+        <list>
+          <items>
+            <item id="client_id">
+              <rank>10</rank>
+            </item>
+            <item id="status">
+              <rank>20</rank>
+            </item>
+            <item id="source">
+              <rank>30</rank>
+            </item>
+            <item id="creation_date">
+              <rank>40</rank>
+            </item>
+            <item id="last_used_date">
+              <rank>50</rank>
+            </item>
+          </items>
+        </list>
+      </presentation>
+    </class>
+
+    <class id="AltiooOAuthGrant" _delta="define">
+      <parent>cmdbAbstractObject</parent>
+      <properties>
+        <comment><![CDATA[/**
+ * One connection: what a person consented to for one client and one resource.
+ * It owns exactly one PersonalToken, renewed in place on every refresh
+ * (doc/adr/0004-one-personal-token-per-grant.md).
+ *
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */]]></comment>
+        <category>addon/authentication</category>
+        <abstract>false</abstract>
+        <key_type>autoincrement</key_type>
+        <db_table>priv_altioo_oauth_grant</db_table>
+        <db_key_field>id</db_key_field>
+        <db_final_class_field/>
+        <naming>
+          <attributes>
+            <attribute id="client_id_friendlyname"/>
+            <attribute id="user_id_friendlyname"/>
+          </attributes>
+        </naming>
+        <display_template/>
+        <icon/>
+        <fields_semantic>
+          <state_attribute>status</state_attribute>
+        </fields_semantic>
+        <reconciliation>
+          <attributes>
+            <attribute id="client_id"/>
+            <attribute id="user_id"/>
+            <attribute id="creation_date"/>
+          </attributes>
+        </reconciliation>
+      </properties>
+      <fields>
+        <field id="client_id" xsi:type="AttributeExternalKey">
+          <sql>client_id</sql>
+          <filter/>
+          <dependencies/>
+          <target_class>AltiooOAuthClient</target_class>
+          <is_null_allowed>false</is_null_allowed>
+          <on_target_delete>DEL_AUTO</on_target_delete>
+        </field>
+        <field id="user_id" xsi:type="AttributeExternalKey">
+          <sql>user_id</sql>
+          <filter/>
+          <dependencies/>
+          <target_class>User</target_class>
+          <is_null_allowed>false</is_null_allowed>
+          <on_target_delete>DEL_AUTO</on_target_delete>
+        </field>
+        <!-- The key of the resource in the resources setting. -->
+        <field id="resource" xsi:type="AttributeString">
+          <sql>resource</sql>
+          <default_value/>
+          <is_null_allowed>false</is_null_allowed>
+          <validation_pattern/>
+          <max_size>64</max_size>
+        </field>
+        <!-- The granted PersonalToken scopes, space-separated. -->
+        <field id="scope" xsi:type="AttributeString">
+          <sql>scope</sql>
+          <default_value/>
+          <is_null_allowed>false</is_null_allowed>
+          <validation_pattern/>
+          <max_size>1024</max_size>
+        </field>
+        <!--
+          An integer rather than an external key on purpose. A person deletes
+          this token under My Account, with no right on this class; an external
+          key would put this grant in that deletion's plan. The next refresh
+          finds the token gone and ends the grant instead.
+        -->
+        <field id="personal_token_id" xsi:type="AttributeInteger">
+          <sql>personal_token_id</sql>
+          <default_value>0</default_value>
+          <is_null_allowed>false</is_null_allowed>
+        </field>
+        <field id="refresh_secret" xsi:type="AttributeOneWayPassword">
+          <sql>refresh_secret</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <tracking_level>none</tracking_level>
+        </field>
+        <!-- The refresh token before the last rotation, accepted again during the grace period only. -->
+        <field id="previous_refresh_secret" xsi:type="AttributeOneWayPassword">
+          <sql>previous_refresh_secret</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <tracking_level>none</tracking_level>
+        </field>
+        <field id="status" xsi:type="AttributeEnum">
+          <sql>status</sql>
+          <default_value>active</default_value>
+          <is_null_allowed>false</is_null_allowed>
+          <values>
+            <value id="active">
+              <code>active</code>
+              <rank>10</rank>
+            </value>
+            <value id="ended">
+              <code>ended</code>
+              <rank>20</rank>
+            </value>
+          </values>
+        </field>
+        <field id="end_reason" xsi:type="AttributeEnum">
+          <sql>end_reason</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <values>
+            <value id="expired">
+              <code>expired</code>
+              <rank>10</rank>
+            </value>
+            <value id="idle">
+              <code>idle</code>
+              <rank>20</rank>
+            </value>
+            <value id="disconnected">
+              <code>disconnected</code>
+              <rank>30</rank>
+            </value>
+            <value id="account">
+              <code>account</code>
+              <rank>40</rank>
+            </value>
+            <value id="reuse">
+              <code>reuse</code>
+              <rank>50</rank>
+            </value>
+            <value id="withdrawn">
+              <code>withdrawn</code>
+              <rank>55</rank>
+            </value>
+            <value id="revoked">
+              <code>revoked</code>
+              <rank>60</rank>
+            </value>
+          </values>
+        </field>
+        <field id="creation_date" xsi:type="AttributeDateTime">
+          <sql>creation_date</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+        <!-- max_grant_days after creation: the grant ends then, whatever happens. -->
+        <field id="expiration_date" xsi:type="AttributeDateTime">
+          <sql>expiration_date</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+        <field id="end_date" xsi:type="AttributeDateTime">
+          <sql>end_date</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+        <field id="last_refresh_date" xsi:type="AttributeDateTime">
+          <sql>last_refresh_date</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <tracking_level>none</tracking_level>
+        </field>
+        <field id="last_refresh_ip" xsi:type="AttributeString">
+          <sql>last_refresh_ip</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <validation_pattern/>
+          <max_size>45</max_size>
+          <tracking_level>none</tracking_level>
+        </field>
+      </fields>
+      <lifecycle>
+        <stimuli>
+          <stimulus id="ev_revoke" xsi:type="StimulusUserAction"/>
+        </stimuli>
+        <states>
+          <state id="active">
+            <flags/>
+            <transitions>
+              <transition id="ev_revoke">
+                <stimulus>ev_revoke</stimulus>
+                <target>ended</target>
+                <actions>
+                  <action>
+                    <verb>Revoke</verb>
+                    <params/>
+                  </action>
+                </actions>
+              </transition>
+            </transitions>
+          </state>
+          <state id="ended">
+            <flags>
+              <attribute id="client_id">
+                <read_only/>
+              </attribute>
+              <attribute id="user_id">
+                <read_only/>
+              </attribute>
+              <attribute id="resource">
+                <read_only/>
+              </attribute>
+              <attribute id="scope">
+                <read_only/>
+              </attribute>
+              <attribute id="personal_token_id">
+                <read_only/>
+              </attribute>
+              <attribute id="end_reason">
+                <read_only/>
+              </attribute>
+              <attribute id="creation_date">
+                <read_only/>
+              </attribute>
+              <attribute id="expiration_date">
+                <read_only/>
+              </attribute>
+              <attribute id="end_date">
+                <read_only/>
+              </attribute>
+            </flags>
+            <transitions/>
+          </state>
+        </states>
+      </lifecycle>
+      <methods>
+        <method id="Revoke">
+          <comment>/** Revoke, in the console: the token goes now, the record stays (src/Service/Grants.php). */</comment>
+          <static>false</static>
+          <access>public</access>
+          <type>LifecycleAction</type>
+          <code><![CDATA[	public function Revoke()
+	{
+		\Altioo\iTop\Extension\OAuthServer\Service\Grants::End($this, 'revoked', false);
+
+		return true;
+	}]]></code>
+        </method>
+      </methods>
+      <presentation>
+        <details>
+          <items>
+            <item id="client_id">
+              <rank>10</rank>
+            </item>
+            <item id="user_id">
+              <rank>20</rank>
+            </item>
+            <item id="resource">
+              <rank>30</rank>
+            </item>
+            <item id="scope">
+              <rank>40</rank>
+            </item>
+            <item id="status">
+              <rank>50</rank>
+            </item>
+            <item id="end_reason">
+              <rank>60</rank>
+            </item>
+            <item id="personal_token_id">
+              <rank>70</rank>
+            </item>
+            <item id="creation_date">
+              <rank>80</rank>
+            </item>
+            <item id="expiration_date">
+              <rank>90</rank>
+            </item>
+            <item id="end_date">
+              <rank>95</rank>
+            </item>
+            <item id="last_refresh_date">
+              <rank>100</rank>
+            </item>
+            <item id="last_refresh_ip">
+              <rank>110</rank>
+            </item>
+          </items>
+        </details>
+        <search>
+          <items>
+            <item id="client_id">
+              <rank>10</rank>
+            </item>
+            <item id="user_id">
+              <rank>20</rank>
+            </item>
+            <item id="resource">
+              <rank>30</rank>
+            </item>
+            <item id="status">
+              <rank>40</rank>
+            </item>
+          </items>
+        </search>
+        <list>
+          <items>
+            <item id="client_id">
+              <rank>10</rank>
+            </item>
+            <item id="user_id">
+              <rank>20</rank>
+            </item>
+            <item id="resource">
+              <rank>30</rank>
+            </item>
+            <item id="status">
+              <rank>40</rank>
+            </item>
+            <item id="expiration_date">
+              <rank>50</rank>
+            </item>
+            <item id="last_refresh_date">
+              <rank>60</rank>
+            </item>
+          </items>
+        </list>
+      </presentation>
+    </class>
+
+    <class id="AltiooOAuthCode" _delta="define">
+      <parent>cmdbAbstractObject</parent>
+      <properties>
+        <comment><![CDATA[/**
+ * An authorization code: lives code_lifetime seconds, used once. The row is
+ * kept after use so that a second use can end the grant it produced.
+ *
+ * @copyright   Copyright (C) 2026 Altioo
+ * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
+ */]]></comment>
+        <category>addon/authentication</category>
+        <abstract>false</abstract>
+        <key_type>autoincrement</key_type>
+        <db_table>priv_altioo_oauth_code</db_table>
+        <db_key_field>id</db_key_field>
+        <db_final_class_field/>
+        <naming>
+          <attributes>
+            <attribute id="client_id_friendlyname"/>
+            <attribute id="expiration_date"/>
+          </attributes>
+        </naming>
+        <display_template/>
+        <icon/>
+        <reconciliation>
+          <attributes>
+            <attribute id="client_id"/>
+            <attribute id="expiration_date"/>
+          </attributes>
+        </reconciliation>
+      </properties>
+      <fields>
+        <field id="code_secret" xsi:type="AttributeOneWayPassword">
+          <sql>code_secret</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <tracking_level>none</tracking_level>
+        </field>
+        <field id="client_id" xsi:type="AttributeExternalKey">
+          <sql>client_id</sql>
+          <filter/>
+          <dependencies/>
+          <target_class>AltiooOAuthClient</target_class>
+          <is_null_allowed>false</is_null_allowed>
+          <on_target_delete>DEL_AUTO</on_target_delete>
+        </field>
+        <field id="user_id" xsi:type="AttributeExternalKey">
+          <sql>user_id</sql>
+          <filter/>
+          <dependencies/>
+          <target_class>User</target_class>
+          <is_null_allowed>false</is_null_allowed>
+          <on_target_delete>DEL_AUTO</on_target_delete>
+        </field>
+        <field id="redirect_uri" xsi:type="AttributeString">
+          <sql>redirect_uri</sql>
+          <default_value/>
+          <is_null_allowed>false</is_null_allowed>
+          <validation_pattern/>
+          <max_size>2048</max_size>
+        </field>
+        <!-- Empty only for a confidential client whose pkce is optional, and that sent none. -->
+        <field id="code_challenge" xsi:type="AttributeString">
+          <sql>code_challenge</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <validation_pattern/>
+          <max_size>128</max_size>
+        </field>
+        <field id="resource" xsi:type="AttributeString">
+          <sql>resource</sql>
+          <default_value/>
+          <is_null_allowed>false</is_null_allowed>
+          <validation_pattern/>
+          <max_size>64</max_size>
+        </field>
+        <field id="scope" xsi:type="AttributeString">
+          <sql>scope</sql>
+          <default_value/>
+          <is_null_allowed>false</is_null_allowed>
+          <validation_pattern/>
+          <max_size>1024</max_size>
+        </field>
+        <field id="expiration_date" xsi:type="AttributeDateTime">
+          <sql>expiration_date</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+        <!-- 0 until the code is exchanged; then the grant it produced. -->
+        <field id="grant_id" xsi:type="AttributeInteger">
+          <sql>grant_id</sql>
+          <default_value>0</default_value>
+          <is_null_allowed>false</is_null_allowed>
+          <tracking_level>none</tracking_level>
+        </field>
+      </fields>
+      <methods/>
+      <presentation>
+        <details>
+          <items>
+            <item id="client_id">
+              <rank>10</rank>
+            </item>
+            <item id="user_id">
+              <rank>20</rank>
+            </item>
+            <item id="resource">
+              <rank>30</rank>
+            </item>
+            <item id="scope">
+              <rank>40</rank>
+            </item>
+            <item id="redirect_uri">
+              <rank>50</rank>
+            </item>
+            <item id="expiration_date">
+              <rank>60</rank>
+            </item>
+            <item id="grant_id">
+              <rank>70</rank>
+            </item>
+          </items>
+        </details>
+        <search>
+          <items>
+            <item id="client_id">
+              <rank>10</rank>
+            </item>
+            <item id="user_id">
+              <rank>20</rank>
+            </item>
+          </items>
+        </search>
+        <list>
+          <items>
+            <item id="user_id">
+              <rank>10</rank>
+            </item>
+            <item id="resource">
+              <rank>20</rank>
+            </item>
+            <item id="expiration_date">
+              <rank>30</rank>
+            </item>
+          </items>
+        </list>
+      </presentation>
+    </class>
+  </classes>
+
+  <menus>
+    <menu id="AltiooOAuthClient" xsi:type="OQLMenuNode" _delta="define">
+      <rank>90</rank>
+      <parent>AdminTools</parent>
+      <oql><![CDATA[SELECT AltiooOAuthClient]]></oql>
+      <do_search>1</do_search>
+      <enable_admin_only>1</enable_admin_only>
+    </menu>
+    <menu id="AltiooOAuthGrant" xsi:type="OQLMenuNode" _delta="define">
+      <rank>91</rank>
+      <parent>AdminTools</parent>
+      <oql><![CDATA[SELECT AltiooOAuthGrant WHERE status = 'active']]></oql>
+      <do_search>1</do_search>
+      <enable_admin_only>1</enable_admin_only>
+    </menu>
+  </menus>
+
+  <module_parameters>
+    <parameters id="altioo-oauth-server" _delta="define">
+      <!--
+        Redirect URIs a client may register, matched exactly. Claude's own is
+        the default; an instance that also serves another client adds it here.
+      -->
+      <redirect_uris type="array">
+        <item>https://claude.ai/api/mcp/auth_callback</item>
+      </redirect_uris>
+      <!-- Also accept http://localhost and http://127.0.0.1 on any port and path (RFC 8252), for local clients. -->
+      <allow_loopback type="bool">false</allow_loopback>
+      <!-- Registrations accepted from one IP address per hour. -->
+      <registration_rate_limit type="int">30</registration_rate_limit>
+      <code_lifetime type="int">60</code_lifetime>
+      <access_token_lifetime type="int">3600</access_token_lifetime>
+      <!-- How long a rotated refresh token is still accepted, so that a lost response does not end a connection. -->
+      <refresh_grace_seconds type="int">30</refresh_grace_seconds>
+      <!-- A connection unused this long ends. -->
+      <grant_idle_days type="int">30</grant_idle_days>
+      <!-- How long an ended connection is kept, as the record of what happened, before the clean-up deletes it. -->
+      <ended_grant_retention_days type="int">90</ended_grant_retention_days>
+      <!-- A connection ends this long after it was made, whatever happens. -->
+      <max_grant_days type="int">90</max_grant_days>
+      <!--
+        The resources a token may be granted for. Empty means the two the
+        extension ships with: altioo-mcp's endpoint (scopes MCP*) and iTop's
+        REST/JSON API (scope REST/JSON), at this instance's own URLs. The README
+        gives the format.
+      -->
+      <resources type="array"/>
+    </parameters>
+  </module_parameters>
+</itop_design>

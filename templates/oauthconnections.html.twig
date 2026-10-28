@@ -1,0 +1,45 @@
+{# @copyright   Copyright (C) 2026 Altioo #}
+{# @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later #}
+{# The client name is self-declared, so every value is escaped explicitly, whatever the environment's autoescape setting. #}
+{# Rendered by My Account with the array src/Hook/MyAccountConnections.php provides, as Section. #}
+
+<div id="altioo-oauth-server-connections" class="ibo-panel ibo-content-block ibo-block ibo-is-neutral ibo-is-opened" data-role="ibo-panel">
+	<div class="ibo-panel--header" data-role="ibo-panel--header">
+		<div class="ibo-panel--header-left" data-role="ibo-panel--header-left">
+			<div class="ibo-panel--titles" data-role="ibo-panel--titles">
+				<div class="ibo-panel--title" data-role="ibo-panel--title">{{ Section.title|e('html') }}</div>
+			</div>
+		</div>
+	</div>
+	<div class="ibo-panel--body" data-role="ibo-panel--body">
+		<p>{{ Section.intro|e('html') }}</p>
+		{% if Section.connections is empty %}
+			<p>{{ Section.empty|e('html') }}</p>
+		{% else %}
+			<table class="ibo-datatable">
+				<thead>
+					<tr>
+						{% for sColumn in Section.columns %}<th>{{ sColumn|e('html') }}</th>{% endfor %}
+					</tr>
+				</thead>
+				<tbody>
+					{% for aConnection in Section.connections %}
+						<tr>
+							<td>{{ aConnection.client|e('html') }}</td>
+							<td>{{ aConnection.scopes|e('html') }}</td>
+							<td>{{ aConnection.since|e('html') }}</td>
+							<td>{{ aConnection.last_used|e('html') }}</td>
+							<td>
+								<form method="post" action="{{ Section.action|e('html_attr') }}">
+									<input type="hidden" name="transaction_id" value="{{ Section.transaction_id|e('html_attr') }}">
+									<input type="hidden" name="grant_id" value="{{ aConnection.id|e('html_attr') }}">
+									<button type="submit" class="ibo-button ibo-is-danger ibo-is-regular">{{ Section.disconnect_label|e('html') }}</button>
+								</form>
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		{% endif %}
+	</div>
+</div>

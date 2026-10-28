@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension format="1.0">
+  <extension_code>altioo-oauth-server</extension_code>
+  <version>0.1.0</version>
+  <label><![CDATA[Altioo OAuth Server]]></label>
+  <description><![CDATA[Makes iTop its own OAuth 2.1 authorization server, so that Claude and other OAuth clients connect with the person's iTop login and receive an ordinary, expiring personal token.]]></description>
+  <mandatory>false</mandatory>
+  <more_info_url>https://github.com/AltiooBV/altioo-oauth-server</more_info_url>
+</extension>
