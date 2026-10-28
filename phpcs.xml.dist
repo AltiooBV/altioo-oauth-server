@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!--
+	The standard is tools/phpcs/iTop. This is the half that knows about this
+	repository: which tree to read.
+
+	`composer lint`, `composer lint:fix`. SourceIntegrityTest overlaps the
+	§4.1-4.2 rules on purpose - those have to keep failing on a checkout where
+	phpcs is not installed.
+-->
+<ruleset name="altioo-oauth-server">
+	<description>The iTop coding standard, over this module's hand-written PHP.</description>
+
+	<rule ref="./tools/phpcs/iTop"/>
+
+	<!-- The whole tree, narrowed by exclusion: a directory added later is then
+	     linted by default rather than by nobody. -->
+	<file>.</file>
+	<exclude-pattern>*/build/*</exclude-pattern>
+	<exclude-pattern>*/.phpunit.cache/*</exclude-pattern>
+
+	<arg name="colors"/>
+	<arg value="sp"/>
+</ruleset>

@@ -1,0 +1,105 @@
+# What is kept out of the release archive.
+#
+# README.md and doc/ are deliberately NOT listed: the archive is what an
+# administrator finds on the instance in a year's time, and documentation that
+# only exists on a web page is documentation that instance does not have.
+# tests/ ships too - iTop's own Extensions testsuite scans env-production/.
+# tools/ does not: it is maintenance tooling for this repository, and it reads
+# git history, which no installed copy has.
+#
+# doc/itop-extension-guide.md and doc/itop-branch-notes.md are the exception to
+# the rule above, and not for size: they are CC BY-SA 4.0, while LICENSE, composer.json,
+# extension.xml and the README all declare the package AGPL-3.0-or-later with
+# no NOTICE beside it. Two differently-licensed files landing on a customer
+# instance is a provenance claim the package cannot support. They also describe
+# how this repository is worked on, which is not something an installed copy
+# has any use for. phpcs.xml.dist goes with them: it points at tools/, which
+# is not in the archive. This file excludes itself for the same reason: it
+# describes how the archive was built, which is a question about the build and
+# not about the instance.
+#
+# CODE_OF_CONDUCT.md is the same case as the guide, and listed for the same two
+# reasons rather than one. It is the Contributor Covenant, which is CC BY 4.0,
+# so shipping it inside an AGPL-3.0-or-later package with no NOTICE beside it
+# is the provenance claim described above; and it governs conduct in this
+# repository's issues and pull requests, which an installed copy has no more
+# use for than it has for the coding standard. CONTRIBUTING.md does ship, and
+# should link it by full URL rather than by relative path for exactly that
+# reason - the same treatment the guide gets there.
+#
+# The guide is named doc/itop-extension-guide.md rather than AGENTS.md at the
+# root on purpose: several assistants load a file called AGENTS.md without
+# being told to, and a generic guide - the same text in every repository that
+# adopts it - cannot name a repository-specific file to send them on to, so a
+# brief living at AGENTS.md would be unreachable by every tool it was written
+# for. If this repository has its own AGENTS.md/CLAUDE.md brief, keep the same
+# split: the brief at the root where a tool that knows nothing will find it,
+# the generic guide beside the branch notes it is paired with, and exclude the
+# brief for the second of the two reasons above (it is this repository's own
+# text under its own licence, so only the "not useful on an instance" reason
+# applies, not the provenance one).
+#
+# .claude/ goes with them, and is listed beside .idea and .vscode rather than
+# among them: those are somebody's editor state and are gitignored, while this
+# one is committed on purpose - shared project hooks, which every clone should
+# get. What it configures is a tool that edits this repository, so an installed
+# instance has no more use for it than for the brief itself. tools/ is already
+# excluded, which is where the hook script it points at lives.
+#
+# psalm.xml and psalm-baseline.xml are the same case as phpcs.xml.dist: they
+# configure a CI job that analyses this tree, and an installed copy has no
+# analyser to point them at. The baseline is also a list of every finding the
+# analysis had on the day it was cut - accepted here with a reason in psalm.xml,
+# but without that context a map of where to look is all it would be on an
+# instance.
+#
+# Every entry below starts with "/" except the two macOS junk names. rsync
+# matches a pattern with no leading slash against the last part of a path at
+# any depth, so a bare "tools" or "build" also dropped src/build/ and
+# vendor/<package>/tools/ from the archive - silently, since nothing compared
+# the archive against the tree. The leading slash anchors the pattern to the
+# module root, which is what every entry here means. tools/ci/build-archive.sh
+# refuses an unanchored entry, so a new line cannot quietly bring that back.
+
+.DS_Store
+._*
+/.git
+/.github
+/.gitignore
+/.gitattributes
+/.idea
+/.vscode
+/.claude
+/composer.phar
+/phpunit.xml
+/AGENTS.md
+/CLAUDE.md
+/doc/itop-extension-guide.md
+/doc/itop-branch-notes.md
+/CODE_OF_CONDUCT.md
+/phpcs.xml.dist
+/psalm.xml
+/psalm-baseline.xml
+/exclude.txt
+/.phpunit.result.cache
+/.phpunit.cache
+
+# Screenshots for a Hub listing are listing material: they exist to be
+# uploaded to the Hub and re-uploaded the next time that page is edited, which
+# is why they are versioned here rather than living in somebody's Downloads
+# folder. They are not documentation the instance has any use for, and unlike
+# README.md and doc/, excluding them costs a reader nothing - unless the
+# README embeds one, in which case move it up and drop this line: a shipped
+# README with a broken image is worse than a larger archive.
+/assets/img/screenshots
+/tools
+/build
+# review/ holds the persona list a review runs, and on a working copy the
+# findings beside it: how this repository is worked on, with nothing an
+# installed copy has a use for.
+/review
+# The archive release.yml assembles and its checksum. Named after this
+# module's own extension code and version, neither of which this pattern
+# names, so it needs no edit if the module is ever renamed.
+/*.zip
+/*.zip.sha256

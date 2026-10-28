@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<!--
+	Static analysis over src/, this extension's hand-written PHP. An extension
+	with none (a theme, a datamodel-only package) skips the job entirely.
+
+	CodeQL has no PHP support and phpcs (phpcs.xml.dist) is a coding-standard
+	linter, not a security scanner - but what runs here is Psalm's plain
+	type-correctness analysis, not a security check either. The
+	vulnerability-class scanning is the progpilot job in ci.yml; see that
+	job's comment for why it was chosen over Psalm's taint analysis and the
+	other scanners measured.
+
+	The taint-analysis flag is off. In altioo-mcp, where this configuration
+	comes from, it was measured vacuous rather than slow: its input arrived as
+	a PSR-7 object built inside vendor/, which this config never scans, and
+	its sinks (MetaModel, DBSearch, UserRights) are the undefined symbols
+	suppressed below, so the analyser had no source and no sink to connect. An
+	extension whose src/ reads input itself may find otherwise - measure it
+	against a positive control ($_GET fed straight to echo is flagged
+	TaintedHtml) before deciding either way.
+
+	This job runs with no iTop checkout, so every core symbol an extension
+	calls (MetaModel, DBObject, UserRights, cmdbAbstractObject, and the rest)
+	is genuinely undefined to Psalm here, not merely unresolved. The
+	UndefinedClass family below is suppressed for exactly that reason and no
+	other: "undefined" is not a finding when the definition was never going
+	to be in this tree. Nothing under vendor/ is scanned either, per
+	itop-extension-guide.md §7.1.
+
+	findUnusedCode is off for the same class of reason: this scan sees only
+	src/, never iTop calling an extension point by convention or through
+	InterfaceDiscovery, and never another extension calling a public API
+	from outside this repository. Every one of those would read as unused
+	code that plainly is not.
+
+	psalm-baseline.xml ships empty: no finding is accepted until somebody
+	accepts it. Psalm refuses to run when the file named below is missing,
+	so keep it even while it lists nothing. To accept the findings an
+	existing src/ already has, regenerate it with Psalm's set-baseline flag
+	and review what went in. findUnusedBaselineEntry is off because a
+	baseline entry matches by file, issue type and the exact reported code
+	snippet, so an unrelated reformat a line above is enough to make one
+	stop matching; turning it on would fail the build on that drift rather
+	than on anything new.
+-->
+<psalm
+	errorLevel="4"
+	resolveFromConfigFile="true"
+	errorBaseline="psalm-baseline.xml"
+	findUnusedBaselineEntry="false"
+	findUnusedCode="false"
+>
+	<projectFiles>
+		<directory name="src" />
+	</projectFiles>
+
+	<issueHandlers>
+		<UndefinedClass errorLevel="suppress" />
+		<UndefinedDocblockClass errorLevel="suppress" />
+		<UndefinedMethod errorLevel="suppress" />
+		<UndefinedInterfaceMethod errorLevel="suppress" />
+		<UndefinedPropertyFetch errorLevel="suppress" />
+		<UndefinedFunction errorLevel="suppress" />
+		<UndefinedConstant errorLevel="suppress" />
+		<MissingDependency errorLevel="suppress" />
+	</issueHandlers>
+</psalm>

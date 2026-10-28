@@ -1,0 +1,43 @@
+{
+  "_comment": [
+    "The iTop branches this extension claims to support, and the PHP versions each is",
+    "tested on. This file is the single source of truth: the CI matrix is computed from",
+    "it, and every prose copy of the claim should be checked against it rather than",
+    "maintained beside it.",
+    "",
+    "If the README, a Hub listing or extension.xml's <description> restate this claim in",
+    "prose, delimit the markdown copies with a supported-versions:begin/end pair and add a",
+    "test - modelled on altioo-mcp's ModuleMetadataTest::testProseAgreesWithTheDeclaredSupport",
+    "- that reads them against this file and composer.json's PHP range, and fails on any",
+    "disagreement. Edit here, not there.",
+    "",
+    "A branch names a minor (3.2), never a patch. CI resolves the latest patch of that",
+    "branch at run time, so a new 3.2.x published by Combodo is exercised by the next",
+    "scheduled run without anyone editing anything - which is the point: the version a",
+    "poorly-tested extension breaks on is usually the one released after anyone last looked.",
+    "",
+    "  branch           the iTop minor, as it appears in the tag names of Combodo/iTop",
+    "  php              PHP versions to install that branch on. Two is enough: the floor",
+    "                   and the ceiling of what composer.json allows. The middle version",
+    "                   is covered by the unit matrix in ci.yml.",
+    "  allow_prerelease resolve to an alpha/beta/rc when the branch has no stable patch",
+    "                   yet. True for a branch you intend to support at its GA and want to",
+    "                   be told about early; never for one users are already running.",
+    "  pin              an exact release - 3.2.1, or 3.2.1-1 for one re-spin of it - when",
+    "                   a resolved patch is known broken and the failure is not this",
+    "                   extension's. It is what gets installed, not only what is reported.",
+    "                   Temporary by nature: say why, in this file.",
+    "",
+    "Add a branch only once it has actually been installed on - the whole matrix, on the",
+    "floor and the ceiling of the PHP range, not a spot check. A branch named here is a",
+    "branch every prose copy tells an operator is tested; naming one that is not is the",
+    "single thing this file exists to prevent. allow_prerelease is there for the first look",
+    "at a branch; the entry comes after the run, not before it."
+  ],
+  "branches": [
+    {
+      "branch": "3.2",
+      "php": ["8.2", "8.4"]
+    }
+  ]
+}

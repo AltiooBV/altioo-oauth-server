@@ -1,0 +1,76 @@
+# Dependency updates.
+#
+# This answers a different question from `composer audit --locked`, which
+# ci.yml already runs weekly. The audit asks "has anything we ship been
+# declared vulnerable"; this asks "has anything we ship fallen behind". Both
+# matter here for the same reason: vendor/ is built from composer.lock and
+# shipped inside the release archive, so a dependency this repository does not
+# update is a dependency every installed instance keeps running.
+#
+# Wednesday, because the other schedules are already taken and a quiet
+# repository should not produce all its noise on one morning: itop-matrix.yml
+# runs Monday, ci.yml and upgrade.yml run Tuesday.
+
+version: 2
+updates:
+  # The extension's own dependencies. composer.lock is committed and vendor/ is
+  # built from it, so what lands here is what an operator ends up installing.
+  #
+  # A pre-1.0 dependency is the one to read rather than merge: a minor bump
+  # is a breaking change by semver's own rules for 0.x. Dependabot opens the
+  # PR; a person decides.
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:00"
+    # A newly published version is not proposed until it has been out this
+    # long -- a quarantine against a release that turns out compromised or
+    # broken in its first days, which matters most for a dependency vendored
+    # into the archive every operator unzips.
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      # Matches the convention in CONTRIBUTING.md: build: for dependencies.
+      prefix: "build"
+      include: "scope"
+    labels:
+      - "dependencies"
+
+  # The pinned action SHAs in .github/workflows/.
+  #
+  # ci.yml has a job that fails the build if any action is referenced by tag
+  # instead of by commit SHA, which makes those pins a maintenance burden
+  # nobody would otherwise keep up with: a pinned action is a frozen action.
+  # Dependabot updates the SHA *and* rewrites the trailing version comment, so
+  # the pin stays honest without anyone resolving tags by hand. This is the
+  # entry that makes the pinning policy sustainable rather than aspirational.
+  #
+  # Grouped into one pull request: five actions drifting separately is five
+  # pull requests a week describing the same kind of change.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:00"
+    # Same quarantine as the composer entry, and for a reason that argues for
+    # it even more here: an action runs with this repository's CI privileges
+    # the moment its pin moves, where a composer dependency merely ships
+    # inside the archive. A compromised release is the same class of risk
+    # either way.
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "ci"

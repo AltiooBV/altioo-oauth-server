@@ -1,0 +1,312 @@
+name: Upgrade
+
+# The install matrix answers "does this install". This one answers the question
+# a client actually lives with: "what happens to the instance I already have".
+#
+# They are different runs and they fail differently. An install starts from an
+# empty database and cannot lose anything. An upgrade recompiles a datamodel
+# over data - and iTop's compiler drops the column of an attribute that stopped
+# being declared, quietly, at the same moment it reports success. The setup has
+# no way to tell "this attribute was removed on purpose" from "this attribute
+# was removed by accident", so neither does CI unless something was put in the
+# instance first and looked for afterwards.
+#
+# The baseline is an earlier version of *this module*, installed the way a
+# client installed it, and then upgraded to the working copy. Which earlier
+# version:
+#
+#   the oldest release tag  - the skip-version path (§9.7): a client upgrading
+#                             1.0 -> 3.0 calls the installer once, with 1.0, so
+#                             it is the jump nobody tests and everybody makes;
+#   the newest release tag  - the ordinary one-step upgrade;
+#   a ref given by hand     - workflow_dispatch, for trying this before any
+#                             release tag exists.
+#
+# Not on every pull request: it installs twice per baseline and costs what that
+# costs. On main, weekly, and on demand.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Tuesday, a day after the iTop matrix - so that when both break in the same
+    # week, the cheaper one has already said which iTop it broke on.
+    - cron: '43 6 * * 2'
+  workflow_dispatch:
+    inputs:
+      baseline_ref:
+        description: 'Git ref to upgrade from (tag, branch or SHA). Empty = the oldest and newest release tags.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  DB_HOST: 127.0.0.1
+  DB_PORT: '3306'
+  DB_USER: root
+  DB_PWD: itop
+  DB_NAME: itop_ci
+  ITOP_ADMIN_USER: admin
+  ITOP_ADMIN_PWD: Admin*2026!
+
+jobs:
+  # Which versions to upgrade from, and on which iTop.
+  #
+  # One iTop, not the matrix: what is under test here is this module's own
+  # version-to-version path, and running it on every branch multiplies the cost
+  # without changing the question. The oldest supported branch at its floor PHP
+  # is the instance a client who upgrades extensions but not iTop is actually
+  # running.
+  baselines:
+    name: Resolve the baselines
+    # Needs extension.xml and a filled-in .github/itop-support.json, which only
+    # an extension has; the jobs after this one skip with it.
+    if: github.repository != 'AltiooBV/altioo-itop-extension'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+      found: ${{ steps.resolve.outputs.found }}
+      itop: ${{ steps.itop.outputs.entry }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Tags are the input to this job, and a shallow clone has none.
+          fetch-depth: 0
+
+      - id: php
+        run: tools/ci/php-range.sh >> "$GITHUB_OUTPUT"
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: ${{ steps.php.outputs.floor }}
+          coverage: none
+
+      - id: resolve
+        env:
+          BASELINE_REF: ${{ inputs.baseline_ref }}
+        run: |
+          set -euo pipefail
+          if [ -n "${BASELINE_REF:-}" ]; then
+            entries=$(jq -nc --arg ref "$BASELINE_REF" \
+              '[{ref: $ref, label: ($ref + " (given)")}]')
+          else
+            # Release tags, oldest first. Both ends of the range, deduplicated
+            # when there is only one - upgrading from a version to itself is a
+            # different test (that the setup is re-runnable), and this workflow
+            # does that anyway, further down.
+            tags=()
+            mapfile -t tags < <(git tag --list 'v*' --sort=v:refname)
+            if [ "${#tags[@]}" -eq 0 ]; then
+              echo "found=false" >> "$GITHUB_OUTPUT"
+              echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+              {
+                echo "### No baseline to upgrade from"
+                echo
+                echo "This repository has no \`v*\` tag yet, so there is no released version a"
+                echo "client could be upgrading from. The upgrade jobs are skipped, not passed."
+                echo
+                echo "To exercise the path before the first release, run this workflow manually"
+                echo "with \`baseline_ref\` set to an earlier commit."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            oldest="${tags[0]}"
+            newest="${tags[-1]}"
+            if [ "$oldest" = "$newest" ]; then
+              entries=$(jq -nc --arg r "$oldest" \
+                '[{ref: $r, label: ($r + " (only release)")}]')
+            else
+              entries=$(jq -nc --arg o "$oldest" --arg n "$newest" \
+                '[{ref: $o, label: ($o + " (oldest, skip-version)")},
+                  {ref: $n, label: ($n + " (previous release)")}]')
+            fi
+          fi
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "matrix={\"include\":$entries}" >> "$GITHUB_OUTPUT"
+          echo "baselines: $entries" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - id: itop
+        if: steps.resolve.outputs.found == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # The first stable entry the resolver returns: oldest supported
+          # branch, floor PHP.
+          # Literal PHP passed to `php -r`; $a/$e are PHP variables, not shell ones.
+          # shellcheck disable=SC2016
+          entry=$(php tools/ci/resolve-itop-versions.php --matrix | php -r '
+            $a = json_decode(stream_get_contents(STDIN), true);
+            foreach ($a["include"] as $e) {
+              if ($e["stable"]) { echo json_encode($e), "\n"; exit(0); }
+            }
+            fwrite(STDERR, "no stable iTop release resolved\n");
+            exit(1);
+          ')
+          echo "entry=$entry" >> "$GITHUB_OUTPUT"
+          # Literal PHP passed to `php -r`; $e is a PHP variable, not a shell one.
+          # shellcheck disable=SC2016
+          echo "upgrading on $(echo "$entry" | php -r '$e=json_decode(stream_get_contents(STDIN),true); echo "iTop {$e["itop_release"]} / PHP {$e["php"]}";')" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+  upgrade:
+    name: From ${{ matrix.label }}
+    needs: baselines
+    if: needs.baselines.outputs.found == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.baselines.outputs.matrix) }}
+
+    services:
+      mariadb:
+        # From Amazon ECR Public, not Docker Hub: see itop-matrix.yml.
+        image: public.ecr.aws/docker/library/mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: itop
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    # ITOP_DIR is deliberately not a job-level `env:` entry. The `runner`
+    # context is not available when those are evaluated - GitHub rejects the
+    # whole file with "Unrecognized named-value: 'runner'", which is a parse
+    # error, so the workflow does not run at all rather than failing visibly.
+    # $RUNNER_TEMP is the same value as an environment variable, set inside
+    # every step, and $GITHUB_ENV carries it to the steps that follow.
+    steps:
+      - name: Where the iTop under test is unpacked
+        run: echo "ITOP_DIR=$RUNNER_TEMP/itop" >> "$GITHUB_ENV"
+
+      - name: This working copy - the version being upgraded *to*
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: The baseline - the version being upgraded *from*
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ matrix.ref }}
+          path: baseline
+          fetch-depth: 0
+
+      - name: Module code, read from extension.xml
+        run: |
+          echo "MODULE_CODE=$(sed -n 's#.*<extension_code>\(.*\)</extension_code>.*#\1#p' extension.xml | head -1)" >> "$GITHUB_ENV"
+
+      - id: itop
+        env:
+          # resolve-itop-versions.php reads this off Combodo's own GitHub
+          # releases, so it is not a value this repository controls.
+          ITOP_ENTRY: ${{ needs.baselines.outputs.itop }}
+        run: |
+          set -euo pipefail
+          for k in php zip_url itop_tag itop_release; do
+            # Literal PHP passed to `php -r`; $e/$argv are PHP variables, not shell ones.
+            # shellcheck disable=SC2016
+            v=$(printf '%s' "$ITOP_ENTRY" | php -r '$e=json_decode(stream_get_contents(STDIN),true); echo $e[$argv[1]];' "$k")
+            # The delimiter form, not "$k=$v": a newline in $v would otherwise
+            # inject extra step outputs into $GITHUB_OUTPUT.
+            delim="ghadelim-$RANDOM-$RANDOM-$RANDOM"
+            {
+              echo "$k<<$delim"
+              echo "$v"
+              echo "$delim"
+            } >> "$GITHUB_OUTPUT"
+          done
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: ${{ steps.itop.outputs.php }}
+          extensions: mysqli, gd, intl, mbstring, soap, zip, xml, ldap, opcache
+          ini-values: memory_limit=512M
+          coverage: none
+          tools: composer:v2
+
+      - name: Graphviz
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends graphviz
+
+      # Two vendor trees, both --no-dev: each version is installed as it ships,
+      # not as the other one's dependencies happen to resolve.
+      - name: Build both vendor trees
+        run: |
+          set -euo pipefail
+          composer install --no-dev --no-interaction --no-progress --optimize-autoloader
+          composer install --no-dev --no-interaction --no-progress --optimize-autoloader -d baseline
+
+      # A real install of the old version, by the same script the install matrix
+      # uses, so the starting point is an instance a client could have.
+      - name: Install the baseline on iTop ${{ steps.itop.outputs.itop_release }}
+        env:
+          ITOP_ZIP_URL: ${{ steps.itop.outputs.zip_url }}
+          ITOP_TAG: ${{ steps.itop.outputs.itop_tag }}
+          MODULE_SRC: ${{ github.workspace }}/baseline
+        run: tools/ci/install-itop.sh
+
+      # The fixture is the extension's own (TEMPLATE-CHECKLIST.md section 5).
+      # Without one, the upgrade itself is still exercised - twice - and the
+      # post-setup smoke below checks what it left.
+      - name: Put data, a token and a tuned setting into the instance
+        if: hashFiles('tools/ci/upgrade-fixture.php') != ''
+        run: php tools/ci/upgrade-fixture.php "$ITOP_DIR" seed
+
+      - name: Upgrade to this working copy
+        run: tools/ci/upgrade-module.sh
+
+      - name: Is everything still there
+        if: hashFiles('tools/ci/upgrade-fixture.php') != ''
+        run: php tools/ci/upgrade-fixture.php "$ITOP_DIR" verify
+
+      # §9.7: a failing migration aborts the client's setup run, they fix the
+      # cause and re-run, and everything executes again. So everything has to
+      # tolerate executing again - including on an instance already at the new
+      # version.
+      - name: Upgrade again, over itself
+        run: tools/ci/upgrade-module.sh
+
+      - name: Is everything still there, still
+        if: hashFiles('tools/ci/upgrade-fixture.php') != ''
+        run: php tools/ci/upgrade-fixture.php "$ITOP_DIR" verify
+
+      # The upgraded instance, not a freshly installed one, is what a client
+      # runs. This is the only place the integration suite meets one.
+      - name: Datamodel checks against the upgraded instance
+        # itop-smoke.php ends with the token module-smoke.php may mint for the
+        # HTTP smoke; only the check lines are kept, so it never reaches the log.
+        run: |
+          set -euo pipefail
+          php tools/ci/itop-smoke.php "$ITOP_DIR" "$ITOP_ADMIN_USER" | grep -E '^(iTop |module: |  ok |  FAIL |       )'
+
+      - name: The integration suite against the upgraded instance
+        if: hashFiles('tests/php-unit-tests/Integration/**/*.php') != ''
+        working-directory: ${{ runner.temp }}/itop/tests/php-unit-tests
+        run: |
+          set -euo pipefail
+          composer install --no-interaction --no-progress
+          php vendor/bin/phpunit \
+            --no-configuration \
+            --bootstrap unittestautoload.php \
+            --testdox \
+            "${ITOP_DIR}/env-production/${MODULE_CODE}/tests/php-unit-tests/Integration"
+
+      - name: Keep the logs of a failed run
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          # A ref can contain a slash; an artifact name cannot.
+          name: upgrade-baseline-${{ strategy.job-index }}-logs
+          path: |
+            ${{ runner.temp }}/itop/ci-install.log
+            ${{ runner.temp }}/itop/ci-upgrade.log
+            ${{ runner.temp }}/itop/ci-upgrade-fixture.json
+            ${{ runner.temp }}/itop/log/
+          retention-days: 7
+          if-no-files-found: warn

@@ -1,0 +1,399 @@
+name: CI
+
+# A listing or a README that says "tested on PHP <floor> to <ceiling>" is a
+# claim. This is what makes it checkable by someone who is deciding whether to
+# trust the extension with their CMDB. The range is the one
+# .github/itop-support.json declares, read by tools/ci/php-range.sh; nothing in
+# this file names a PHP version except the lint job, whose answer does not
+# depend on one.
+#
+# This is where the PHP matrix question is answered. itop-matrix.yml repeats the
+# unit suite once, on one version, as its own gate - a workflow cannot depend on
+# a job in another workflow, and its install jobs are too expensive to start on a
+# tree that fails here. Do not deduplicate the two.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Tuesday morning. The audit job below is the one check whose verdict
+    # changes with no commit - an advisory published against a locked version
+    # is news whether or not anybody pushed - so on a quiet repository it has
+    # to be started by something other than a push.
+    - cron: '29 6 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Stage 1 (itop-extension-guide.md §12.3): the cheapest and most decisive gate, and the
+  # one §4.8 states as a MUST. It fails on the tree as written rather than on
+  # the tree as run, so it goes before the suites and before anything that
+  # needs an iTop.
+  lint:
+    name: Coding standard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+          # phpcs is deliberately not a composer dependency: composer.lock is
+          # shipped inside the archive and vendor/ is built from it with
+          # --no-dev, so a linter added there is a package an operator can see
+          # in the bill of materials but never runs. It is build tooling, and
+          # it is installed like build tooling.
+          #
+          # Pinned to the same 4.0.4 as tools/ci/local/Dockerfile's phpcs.phar,
+          # so the coding standard this job enforces and the one the local
+          # runner installs never quietly diverge. Bump both together.
+          tools: composer:v2, phpcs:4.0.4
+
+      # The standard is tools/phpcs/iTop - Combodo's, carrying no path of this
+      # repository - and phpcs.xml.dist is what points it at this tree. The
+      # full report goes to the log rather than through an annotator, so that
+      # what failed is readable from the job page alone.
+      - name: Combodo's coding standard
+        run: phpcs
+
+  # Two things about the workflow files themselves, neither of which any suite
+  # can check: they fail on GitHub or not at all.
+  workflows:
+    name: Workflow files are valid
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # A context used where it does not exist is a *parse* error: GitHub
+      # rejects the whole file and the workflow does not run at all, which
+      # looks identical to a workflow nobody triggered. upgrade.yml and
+      # itop-matrix.yml both shipped with `${{ runner.temp }}` in a job-level
+      # `env:` and neither had ever run; the first push to a public repository
+      # is what said so. `runner` and `steps` exist only inside steps.
+      - name: No job-level key may use a step-only context
+        run: |
+          python3 - <<'PY'
+          import sys, glob, yaml
+          JOB_LEVEL = ['env', 'if', 'container', 'services', 'strategy',
+                       'concurrency', 'timeout-minutes', 'runs-on']
+          STEP_ONLY = ['runner.', 'steps.']
+          bad = []
+          for f in sorted(glob.glob('.github/workflows/*.yml')):
+              for job, spec in (yaml.safe_load(open(f)).get('jobs') or {}).items():
+                  for key in JOB_LEVEL:
+                      if key not in spec:
+                          continue
+                      dumped = yaml.dump(spec[key])
+                      for ctx in STEP_ONLY:
+                          if ctx in dumped:
+                              bad.append(f"{f}: job '{job}', {key}: uses {ctx.rstrip('.')}")
+          for b in bad:
+              print(b)
+          if bad:
+              print()
+              print("the context above does not exist where it is used; GitHub refuses the")
+              print("whole file, so the workflow silently never runs. Move it into a step.")
+              sys.exit(1)
+          print("no job-level key uses a step-only context")
+          PY
+
+      - name: No workflow may reference an action by tag
+        run: |
+          set -euo pipefail
+          if grep -rnP '^\s*(-\s*)?uses:\s*[^./].*@(?![0-9a-f]{40}(\s|$))' .github/workflows/; then
+            echo
+            echo "the references above name a mutable tag; pin them to the full commit SHA"
+            echo "and leave the version in a trailing comment:  uses: owner/action@<sha> # v1.2.3"
+            exit 1
+          fi
+          echo "every action is pinned to a 40-character commit SHA"
+
+      # Everything above is this repository's own, narrow checks. actionlint
+      # knows the shape of every context and expression GitHub itself
+      # accepts, which is what actually would have caught the unquoted
+      # interpolation into a shell line that upgrade.yml shipped with -
+      # neither check above reads inside a `run:` block at all.
+      #
+      # Fetched and verified the same way tools/ci/local/Dockerfile pins
+      # phpcs.phar, rather than through a third-party wrapper action: this is
+      # the one pin in this file that is not a git commit SHA, because
+      # rhysd/actionlint publishes prebuilt binaries and a checksum file, not
+      # a composite action.
+      - name: actionlint
+        env:
+          ACTIONLINT_VERSION: '1.7.12'
+          ACTIONLINT_SHA256: '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8'
+        run: |
+          set -euo pipefail
+          curl -fsSL -o actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint.tar.gz" | sha256sum -c -
+          tar -xzf actionlint.tar.gz actionlint
+          ./actionlint -color
+
+  # The claimed range, as a matrix the unit suite can run over.
+  php:
+    name: Declared PHP range
+    # Needs .github/itop-support.json filled in, which only an extension has; in
+    # the template repository template-selftest.yml runs the harness instead.
+    if: github.repository != 'AltiooBV/altioo-itop-extension'
+    runs-on: ubuntu-latest
+    outputs:
+      floor: ${{ steps.php.outputs.floor }}
+      matrix: ${{ steps.php.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: php
+        run: tools/ci/php-range.sh | tee -a "$GITHUB_OUTPUT"
+
+  tests:
+    name: Unit suite on PHP ${{ matrix.php }}
+    needs: php
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every minor from the floor to the ceiling .github/itop-support.json
+        # declares. Keep composer.json's "php" constraint and its
+        # config.platform.php pin on the same floor.
+        php: ${{ fromJson(needs.php.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate composer.json and composer.lock
+        run: composer validate --strict --no-check-publish
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      # Checked against the PHP this job actually runs, which is the point of
+      # running it once per version: it proves the one committed lock is
+      # installable on every version the extension claims, extensions included.
+      #
+      # It does NOT read config.platform.php - that override applies when
+      # `composer update` resolves, not here: this step reports the real
+      # runtime, not the pinned floor. The two do different jobs, and the pin is
+      # the reason this step can pass on the floor at all - drop it and an
+      # update run on a developer's newer PHP may resolve a dependency to a
+      # release that needs that newer PHP, which this step then fails on every
+      # version below it.
+      - name: Check platform requirements
+        run: composer check-platform-reqs
+
+      - name: Unit suite
+        run: composer test:unit
+
+  audit:
+    name: Dependency audit
+    # Needs composer.json/extension.xml, which only an extension has; in the
+    # template repository template-selftest.yml runs the harness instead.
+    if: github.repository != 'AltiooBV/altioo-itop-extension'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: php
+        run: tools/ci/php-range.sh >> "$GITHUB_OUTPUT"
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: ${{ steps.php.outputs.floor }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      # Advisories against the locked versions. Production dependencies are
+      # vendored into the archive, so this is the check that a shipped
+      # dependency has not gone bad since the last release.
+      - name: composer audit
+        run: composer audit --locked
+
+  # phpcs (the lint job) is a coding-standard linter, not a security scanner,
+  # and CodeQL has no PHP support. Psalm's taint-analysis flag would be the
+  # relevant feature for code that takes request input to MetaModel and
+  # UserRights, but it is not run here (psalm.xml explains why, and what to
+  # measure before changing that), so this job is plain type-correctness analysis,
+  # not vulnerability scanning. The progpilot job below is what looks for a
+  # vulnerability class in src/.
+  # Both this job and the next scan src/. An extension with no hand-written
+  # PHP there (a theme, a datamodel-only package) has nothing for them to
+  # read, so every step after the checkout is skipped rather than failing on
+  # a missing directory - the job stays green and says why in its step list.
+  sast:
+    name: Static analysis (Psalm)
+    # Needs composer.json/extension.xml, which only an extension has; in the
+    # template repository template-selftest.yml runs the harness instead.
+    if: github.repository != 'AltiooBV/altioo-itop-extension'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: php
+        if: hashFiles('src/**/*.php') != ''
+        run: tools/ci/php-range.sh >> "$GITHUB_OUTPUT"
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        if: hashFiles('src/**/*.php') != ''
+        with:
+          php-version: ${{ steps.php.outputs.floor }}
+          coverage: none
+          # Build tooling, installed the way this job's neighbour installs
+          # phpcs: composer.lock ships inside the release archive and vendor/
+          # is built from it with --no-dev, so a static analyser living in
+          # require-dev would be a package an operator can see in the bill of
+          # materials but that never runs. Pinned for the same reason the
+          # lint job's phpcs is: psalm-baseline.xml is generated against one
+          # exact version, and an unpinned tool silently drifting to a newer
+          # release would make the baseline comparison meaningless.
+          tools: composer:v2, psalm:6.18.1
+
+      - name: Install dependencies
+        if: hashFiles('src/**/*.php') != ''
+        run: composer install --no-interaction --no-progress
+
+      # Blocking: psalm-baseline.xml holds every finding accepted when it was
+      # last regenerated - none, as the template ships it - so a green run
+      # here means no *new* issue, not necessarily zero issues. See psalm.xml
+      # for what is suppressed and why, and for why this runs plain rather
+      # than with the taint-analysis flag.
+      - name: Static analysis over src/
+        if: hashFiles('src/**/*.php') != ''
+        env:
+          PHP_FLOOR: ${{ steps.php.outputs.floor }}
+        run: psalm --php-version="$PHP_FLOOR"
+
+  # A real vulnerability-class scanner, chosen in altioo-mcp from a measured
+  # four-way comparison (Progpilot, phpcs-security-audit, Semgrep p/php, a
+  # hand-written token check) run against a control file planting 7 known
+  # vulnerability classes: Progpilot caught 6/7 with CWE ids and zero false
+  # positives on that module's src/. Semgrep caught fewer (4/7) at the
+  # highest cost (container + live rule feed) and is deliberately not used.
+  #
+  # Build tooling, not a dependency, for the same reason psalm and phpcs are
+  # installed outside the project: composer.lock ships inside the release
+  # archive and vendor/ is built from it with --no-dev, so a scanner in
+  # require-dev would be visible in the bill of materials but would never
+  # run. Installed with a COMPOSER_HOME outside the checkout so it cannot be
+  # mistaken for a project dependency, and pinned so a newer release cannot
+  # silently change what this gate accepts.
+  #
+  # Progpilot prints a JSON array of findings to stdout ([] when clean) and
+  # exits non-zero when that array is non-empty - verified directly against
+  # both a clean src/ (exit 0) and the control file above (exit 1, all 6
+  # taint-style classes reported) - so the plain exit code is a real gate,
+  # not one that always passes. Measured at ~6s over altioo-mcp's 70 files;
+  # timeout-minutes is generous around that.
+  progpilot:
+    name: Vulnerability scan (Progpilot)
+    # Needs composer.json/extension.xml, which only an extension has; in the
+    # template repository template-selftest.yml runs the harness instead.
+    if: github.repository != 'AltiooBV/altioo-itop-extension'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: php
+        if: hashFiles('src/**/*.php') != ''
+        run: tools/ci/php-range.sh >> "$GITHUB_OUTPUT"
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        if: hashFiles('src/**/*.php') != ''
+        with:
+          php-version: ${{ steps.php.outputs.floor }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Progpilot
+        if: hashFiles('src/**/*.php') != ''
+        env:
+          COMPOSER_HOME: ${{ runner.temp }}/progpilot-composer-home
+        run: composer global require designsecurity/progpilot:1.2.0 --no-interaction --no-progress
+
+      - name: Scan src/ for known vulnerability classes
+        if: hashFiles('src/**/*.php') != ''
+        env:
+          COMPOSER_HOME: ${{ runner.temp }}/progpilot-composer-home
+        run: '"$COMPOSER_HOME/vendor/bin/progpilot" src/'
+
+  # The guide and the branch notes are the same text in every extension made
+  # from the template, each repository holding its own copy. On a pull request
+  # a difference is a warning - the copy here may well be the newer one; on the
+  # weekly run it fails, so a drift nobody resolved does not stay quiet. Not
+  # run in the template itself, which is what the copies are compared with.
+  shared-docs:
+    name: Shared documents match the template
+    if: github.repository != 'AltiooBV/altioo-itop-extension'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Compare with the template
+        env:
+          SHARED_DOCS_STRICT: ${{ github.event_name == 'schedule' }}
+        run: tools/ci/shared-docs-check.sh
+
+  package:
+    name: Release archive builds
+    # Needs composer.json/extension.xml, which only an extension has; in the
+    # template repository template-selftest.yml runs the harness instead.
+    if: github.repository != 'AltiooBV/altioo-itop-extension'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: php
+        run: tools/ci/php-range.sh >> "$GITHUB_OUTPUT"
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: ${{ steps.php.outputs.floor }}
+          coverage: none
+          tools: composer:v2
+
+      # What store users unzip into extensions/: production dependencies only,
+      # nothing from require-dev, and vendor/ present because they will never
+      # run composer themselves.
+      - name: Build production vendor tree
+        run: composer install --no-dev --no-interaction --no-progress --optimize-autoloader
+
+      # Exercised on every change rather than only at a tag: an archive that
+      # first builds during a release is one that first fails during a
+      # release. The same script release.yml runs - the bill of materials, the
+      # archive, and what it must and must not contain - so what this proves
+      # buildable is what a release publishes.
+      - name: Build and check the archive
+        run: tools/ci/build-archive.sh

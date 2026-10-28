@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<!--
+	Combodo's coding standard for iTop, as a PHP_CodeSniffer standard. Section
+	numbers below are AGENTS.md's, which restates it.
+
+	No module name, no repository path: copy this directory into another iTop
+	extension and it works there unchanged.
+
+	Not built on PSR-12 or PER. Those disagree with iTop on tabs and on the
+	brace after a class or function declaration, so basing on one and excluding
+	the differences would leave the standard up to whichever sniffs the next
+	PHPCS release adds to it.
+
+	§4.1-4.4 rules that no bundled sniff expresses - English only, Hungarian
+	prefixes, `===` over `==`, never `empty()` for string emptiness - are
+	checked in the unit suite or by hand, not dropped.
+-->
+<ruleset name="iTop">
+	<description>Combodo's coding standard for iTop and its extensions.</description>
+
+	<!-- model.*.php is rewritten by the compiler on every setup run; env-*/ is
+	     the compiled copy of everything else here. -->
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<exclude-pattern>*/model.*.php</exclude-pattern>
+	<exclude-pattern>*/env-*/*</exclude-pattern>
+	<exclude-pattern>*/data/*</exclude-pattern>
+
+	<arg name="extensions" value="php"/>
+	<arg name="tab-width" value="4"/>
+
+	<!-- §4.1 Files -->
+	<rule ref="Generic.Files.ByteOrderMark"/>
+	<rule ref="Generic.Files.LineEndings">
+		<properties>
+			<property name="eolChar" value="\n"/>
+		</properties>
+	</rule>
+	<rule ref="Generic.Files.EndFileNewline"/>
+	<rule ref="Generic.PHP.CharacterBeforePHPOpeningTag"/>
+	<rule ref="Generic.PHP.DisallowShortOpenTag"/>
+	<rule ref="Zend.Files.ClosingTag"/>
+
+	<!-- §4.2 Indentation -->
+	<rule ref="Generic.WhiteSpace.DisallowSpaceIndent"/>
+	<rule ref="Squiz.WhiteSpace.SuperfluousWhitespace"/>
+
+	<!-- §4.3 Braces. The two halves disagree on purpose. -->
+	<rule ref="PEAR.Classes.ClassDeclaration"/>
+	<rule ref="Generic.Functions.OpeningFunctionBraceBsdAllman"/>
+	<rule ref="Squiz.ControlStructures.ControlSignature"/>
+	<rule ref="Generic.ControlStructures.InlineControlStructure"/>
+
+	<!-- §4.4 Naming and operators -->
+	<rule ref="Squiz.Scope.MethodScope"/>
+	<rule ref="Squiz.Scope.MemberVarScope"/>
+	<rule ref="PSR2.Methods.MethodDeclaration"/>
+	<rule ref="Squiz.Strings.ConcatenationSpacing">
+		<properties>
+			<property name="spacing" value="0"/>
+			<!-- A wrapped expression, not a missing space. -->
+			<property name="ignoreNewlines" value="true"/>
+		</properties>
+	</rule>
+	<rule ref="Generic.Functions.FunctionCallArgumentSpacing"/>
+</ruleset>

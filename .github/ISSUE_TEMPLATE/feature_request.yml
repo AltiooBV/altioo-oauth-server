@@ -1,0 +1,65 @@
+name: Feature request
+description: Something this extension could do, or a change to something it already does.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        <!-- TEMPLATE NOTE, remove on instantiation: if this extension has a documented
+             extension point of its own (a tool-pack mechanism, a plugin interface), say so here
+             and link its doc, the way altioo-mcp points feature requests at doc/extending.md
+             before asking whether an idea belongs in the base extension or in a pack. If there
+             is no such split, remove this block. -->
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you cannot do today
+      description: The task, not the patch.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+      description: >-
+        If it is a new class, method or module parameter, name it and say what it takes and
+        returns, or what its default would be and why that default is the safe one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: permissions
+    attributes:
+      label: What it reads and writes
+      description: >-
+        Every read and write should go through `UserRights`, and nothing should let a caller
+        exceed what they could do in the console. Which classes and attributes would this touch,
+        and does it write anything or apply a stimulus?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: breaking
+    attributes:
+      label: Would this change something already published?
+      description: >-
+        A class marked `@api`, a public identifier, or the default of a module parameter changing
+        is breaking and means a major version. CHANGELOG.md states the rule.
+      options:
+        - "No - purely additive"
+        - "Yes - it changes an @api class, an identifier, or a parameter default"
+        - "I am not sure"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: offer
+    attributes:
+      label: Would you like to implement it?
+      options:
+        - label: >-
+            I would open the pull request. (CONTRIBUTING.md has the rules the code is written
+            to; AI-assisted work is welcome and must be disclosed.)
+          required: false

@@ -1,0 +1,15 @@
+# Issue forms live beside this file. Blank issues stay enabled on purpose: a
+# question forced through a bug form arrives with several empty required fields.
+blank_issues_enabled: true
+
+contact_links:
+  - name: Report a vulnerability (private)
+    url: https://github.com/AltiooBV/altioo-oauth-server/security/advisories/new
+    about: >-
+      Never a public issue. Acknowledged within 5 working days; SECURITY.md has the
+      full commitment and what is out of scope.
+
+# TEMPLATE NOTE, remove on instantiation: add links here for whatever this
+# extension actually ships - a troubleshooting section in the README, a
+# client/integration setup doc, an extension-point doc - the way altioo-mcp
+# links its Troubleshooting section, doc/clients.md and doc/extending.md.
