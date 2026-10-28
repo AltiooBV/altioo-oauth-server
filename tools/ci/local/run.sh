@@ -81,7 +81,13 @@ declared_branch() { jq -r '.branches[0].branch' "$REPO/.github/itop-support.json
 # one shared tag every time a run switches between them.
 dockerfile_hash() { sha256sum "$REPO/tools/ci/local/Dockerfile" | cut -c1-12; }
 image_for() { echo "altioo-ci:php$1-$(dockerfile_hash)"; }
-runner_name() { echo "itop-ci-php${1//./}"; }
+# The runner containers and everything under /work carry the module code: two
+# repositories adopting this harness on one machine share the database server,
+# the volume and the network, and nothing else. They used to share the runner
+# and the installed iTop too, so one repository's run recreated the other's
+# container mid-run and installed over the iTop the other's integration loop
+# was using.
+runner_name() { echo "itop-ci-${MODULE_CODE}-php${1//./}"; }
 
 need_image() {
 	local sPhp=$1 sImage
@@ -107,7 +113,7 @@ need_net() {
 # script as the file to lint, reports "1 / 1", and the steps below it never run
 # at all - silently, with a zero exit. Anything that reads stdin does this.
 put_script() {
-	docker exec -i "$(runner_name "$1")" bash -c "cat > /work/$2"
+	docker exec -i "$(runner_name "$1")" bash -c "cat > /work/${MODULE_CODE}-$2"
 }
 
 # GITHUB_TOKEN, when the caller has one, is passed per run rather than when
@@ -118,7 +124,7 @@ put_script() {
 # otherwise allows 60 anonymous calls an hour per IP.
 run_script() {
 	local sPhp=$1 sName=$2; shift 2
-	docker exec -e GITHUB_TOKEN "$(runner_name "$sPhp")" bash "/work/$sName" "$@"
+	docker exec -e GITHUB_TOKEN "$(runner_name "$sPhp")" bash "/work/${MODULE_CODE}-$sName" "$@"
 }
 
 # MariaDB 10.11, pinned exactly as itop-matrix.yml pins it: a database that
@@ -258,7 +264,7 @@ else
 fi
 composer test:unit
 INNER
-	run_script "$sPhp" unit.sh "/work/unit-$sPhp" "$(declared_floor)"
+	run_script "$sPhp" unit.sh "/work/${MODULE_CODE}-unit-$sPhp" "$(declared_floor)"
 }
 
 # itop-matrix.yml's install job, end to end: the dry run that answers "would
@@ -359,7 +365,7 @@ printf '%s\n' "${aResults[@]}" | grep -q '^FAIL' && exit 1
 exit 0
 INNER
 	run_script "$sPhp" matrix.sh \
-		"/work/module-$sPhp" "/work/itop-$sBranch-$sPhp" "itop_${sBranch//./}_${sPhp//./}" \
+		"/work/${MODULE_CODE}-module-$sPhp" "/work/${MODULE_CODE}-itop-$sBranch-$sPhp" "itop_${MODULE_CODE//-/_}_${sBranch//./}_${sPhp//./}" \
 		"$sBranch" "$MODULE_CODE" "$VOLUME"
 }
 
@@ -385,7 +391,7 @@ rsync -a /src/tests/php-unit-tests/ "$sTests/"
 cd "$sItopDir/tests/php-unit-tests"
 php vendor/bin/phpunit --no-configuration --bootstrap unittestautoload.php --testdox "$sTests/Integration"
 INNER
-	run_script "$sPhp" integration.sh "/work/itop-$sBranch-$sPhp" "$MODULE_CODE"
+	run_script "$sPhp" integration.sh "/work/${MODULE_CODE}-itop-$sBranch-$sPhp" "$MODULE_CODE"
 }
 
 cmd_shell() {
@@ -395,12 +401,19 @@ cmd_shell() {
 }
 
 cmd_down() {
-	say "removing the containers, the volume and the network"
+	say "removing this repository's runners"
 	local sName
-	for sName in $(docker ps -aq -f 'name=^itop-ci-php'); do docker rm -f "$sName" >/dev/null; done
-	docker rm -f "$DB_CONTAINER" >/dev/null 2>&1 || true
-	docker volume rm "$VOLUME" >/dev/null 2>&1 || true
-	docker network rm "$NET" >/dev/null 2>&1 || true
+	for sName in $(docker ps -aq -f "name=^itop-ci-${MODULE_CODE}-php"); do docker rm -f "$sName" >/dev/null; done
+	# The database server, the volume and the network are shared with any other
+	# repository using this harness, so they go only with the last runner.
+	if [ -n "$(docker ps -aq -f 'name=^itop-ci-.*php[0-9]+$')" ]; then
+		echo "other repositories' runners remain: the database server, the volume and the network are kept"
+	else
+		say "removing the database server, the volume and the network"
+		docker rm -f "$DB_CONTAINER" >/dev/null 2>&1 || true
+		docker volume rm "$VOLUME" >/dev/null 2>&1 || true
+		docker network rm "$NET" >/dev/null 2>&1 || true
+	fi
 	echo "the altioo-ci:* images are kept, one per PHP version and Dockerfile - docker rmi the ones you no longer need"
 }
 
