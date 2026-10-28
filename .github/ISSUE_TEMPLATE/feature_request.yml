@@ -2,15 +2,6 @@ name: Feature request
 description: Something this extension could do, or a change to something it already does.
 labels: ["enhancement"]
 body:
-  - type: markdown
-    attributes:
-      value: >-
-        <!-- TEMPLATE NOTE, remove on instantiation: if this extension has a documented
-             extension point of its own (a tool-pack mechanism, a plugin interface), say so here
-             and link its doc, the way altioo-mcp points feature requests at doc/extending.md
-             before asking whether an idea belongs in the base extension or in a pack. If there
-             is no such split, remove this block. -->
-
   - type: textarea
     id: problem
     attributes:

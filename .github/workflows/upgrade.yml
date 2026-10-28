@@ -251,7 +251,7 @@ jobs:
           MODULE_SRC: ${{ github.workspace }}/baseline
         run: tools/ci/install-itop.sh
 
-      # The fixture is the extension's own (TEMPLATE-CHECKLIST.md section 5).
+      # The fixture is the extension's own (doc/release-checklist.md, first publication).
       # Without one, the upgrade itself is still exercised - twice - and the
       # post-setup smoke below checks what it left.
       - name: Put data, a token and a tuned setting into the instance

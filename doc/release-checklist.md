@@ -34,6 +34,28 @@ not repeat these — *Every release* below is the recurring list.
       (guide §9.8). Write the names down where the audit evidence lives, and revisit them
       whenever that stops being true rather than at the next release.
 
+- [x] **Write the extension's own checks.** 2026-10-28: `tools/ci/checks/module-smoke.php`
+      (classes, settings, resources, discovery of the clean-up process and the My Account
+      section, Revoke, the clean-up) and `tools/ci/checks/http-smoke.sh` (the whole flow, as a
+      public client and as a confidential one, refresh in place, the grace period, Disconnect).
+      Adapt [ci-itop-matrix.md](ci-itop-matrix.md), [ci-upgrade.md](ci-upgrade.md) and this
+      file to what they assert. Delete a row that does not apply.
+- [ ] **Write `tools/ci/upgrade-fixture.php`** once 0.1.0 is tagged: the upgrade workflow
+      installs the previous release and upgrades it, and until there is one there is nothing
+      to seed. It must seed a client, an active connection and its token, and check after the
+      upgrade that the connection still refreshes.
+- [x] **Clean up after the flow.** 2026-10-28: `src/Service/CleanUpProcess.php`, hourly.
+- [x] **Let an administrator revoke a connection** from the console, and the person from My
+      Account. 2026-10-28: the Revoke stimulus on `AltiooOAuthGrant`, and *Connected
+      applications* under *Personal Tokens*.
+- [ ] **Connect claude.ai** to a test instance over HTTPS, and one hand-configured client,
+      as the release gate in the design note says; record what was tested in the changelog.
+- [x] **Complete the README** against the guide's §9.3. 2026-10-28, before any release: check
+      it again against what 0.1.0 actually ships, the upgrade procedure in particular.
+- [ ] **Write `doc/security-summary.md`**, the page an approver reads (guide §9.8).
+- [ ] **Start `CHANGELOG.md`** with the first version, in Keep a Changelog format, and give
+      SECURITY.md's *Supported versions* its first row, both dated the day of the tag.
+
 ## Every release
 
 ### Version

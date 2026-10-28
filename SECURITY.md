@@ -1,11 +1,13 @@
 # Security
 
-{{EXTENSION_ONE_LINE_RISK_SUMMARY}}
+This extension adds endpoints that answer callers who are **not signed in**: anyone can
+register a client, and the token endpoint takes no session. What it issues are credentials
+that act as an iTop user and outlive that user's sign-in. It is an authorization server, and
+deserves to be reviewed as one.
 
-<!-- TEMPLATE NOTE, remove on instantiation: state in one or two sentences what makes this
-     extension worth a security page of its own - a new HTTP entry point, a new set of
-     permissions, direct MetaModel/UserRights access, an outbound connection, or "nothing beyond
-     what installing any iTop extension already implies" if that is honestly the case. -->
+**Nothing is released yet.** The sections below that are specific to this extension state the
+design that release must meet. They are checked against the code by the review passes in
+[`review/review-personas.md`](review/review-personas.md) before the first archive is published.
 
 ## Reporting a vulnerability
 
@@ -36,16 +38,21 @@ extension version, the PHP version, and whatever reproduces it.
 a user reach something you did not expect through this extension's own module settings; and
 anything reachable only by an administrator, who can already edit the datamodel.
 
-<!-- TEMPLATE NOTE, remove on instantiation: add your own extension-specific out-of-scope and
-     in-scope examples here, the way altioo-mcp's SECURITY.md names a caller exceeding their own
-     iTop permissions as squarely in scope. Generic boilerplate is not a substitute for stating
-     what this extension actually guards. -->
+**In scope, squarely:** a code, access token or refresh token reaching anyone other than the
+person who consented and the client they consented to; a token wider, stronger or longer-lived
+than the consent page showed; the consent page misleading a person about who is asking or where
+they will be sent back; any way past the instance's login or MFA; a connection that survives the
+person deleting its token under *My Account*; and any secret written to a log, a URL or the
+change history.
+
+**Out of scope, too:** what a client does with a token it was legitimately given, within what
+the person consented to. That is the client's behaviour, not this extension's defect.
 
 ## Supported versions
 
 | Version | Status |
 |---|---|
-| {{VERSION}}.x | **Supported.** Released {{RELEASE_DATE}}, security fixes until {{SUPPORT_END_DATE}} |
+| — | No version has been released. The first release adds its row here, dated the day it is published. |
 
 Fixes are issued as a new patch of every minor still inside its support period below, not only
 of the newest one. The extension follows iTop's own branch policy: a version supported here runs
@@ -95,24 +102,43 @@ minutes. Regenerate both with `composer sbom` and `composer licenses`.
 
 ## What the extension does, in security terms
 
-{{WHAT_THE_EXTENSION_DOES_SECURITY_SECTION}}
-
-<!-- TEMPLATE NOTE, remove on instantiation: this section, and Threat model / Hardening the
-     deployment / Dependencies below, are the extension-specific half of this file and cannot be
-     templated - see altioo-mcp/SECURITY.md for the shape a thorough version takes (~500 lines,
-     covering every entry point, every permission check, and the deployment hardening that
-     follows from them). Do not ship this file with only the generic sections filled in; an
-     extension that adds no new attack surface should say so explicitly rather than leave this
-     section as a placeholder. -->
+- **Endpoints, all unauthenticated by design:** the authorization server metadata, the
+  protected resource metadata for each resource, client registration, and the token endpoint.
+  The authorize endpoint sends the person through iTop's own login before it shows anything.
+- **What it stores:** registered clients; pending authorization requests and codes, which live
+  for seconds; and grants. A client secret, code or refresh token is stored only as a salted
+  hash.
+- **What it issues:** access tokens, which are iTop `PersonalToken` objects owned by the person.
+  Each has an `expiration_date`, so iTop refuses one past its date even if this module is
+  broken or removed. Refresh tokens are rotated on every use.
+- **Who can be a client:** any client that registers itself, as a public client bound by
+  PKCE, if its redirect URIs are on the administrator's allowlist; and clients an
+  administrator creates in the console, which may be confidential, with a secret, and may be
+  allowed to skip PKCE.
+- **What it does not do:** grant any right the person lacks. The token is checked by
+  `authent-token` and the resource like any other personal token, and reaches only what that
+  user's profiles allow.
 
 ## Threat model
 
-{{THREAT_MODEL}}
+| Who | Can | Defence |
+|---|---|---|
+| Anyone on the internet | Register a client, send a person a crafted authorize link, call the token endpoint at will | Redirect URIs matched exactly against the administrator's allowlist; no redirect before the client and its redirect URI are checked; PKCE S256 required with no plain fallback; codes single-use, short-lived and bound to client, redirect URI and resource; the consent page cannot be framed and its form carries iTop's transaction id |
+| A legitimate client | Ask for more than it was given, keep a token after consent is withdrawn | Scopes fixed by the `resource` parameter and the administrator's caps, enforced on the server; every refresh re-checks the account, its profiles and that the token still exists; reuse of a rotated refresh token ends the grant |
+| Someone holding a confidential client's secret | Exchange that client's codes and refresh its grants | The secret alone gets nothing: a code is issued only after a person signs in and consents, and only to a redirect URI the administrator entered. The secret is stored as a one-way hash; a public client presenting a secret is refused rather than believed |
+| Someone holding a stolen refresh token | Use it alongside the client | The first of the two to refresh invalidates the other's; reuse ends the grant for both |
+| A person removed from the identity provider whose iTop `User` stays enabled | Keep a connection made before | Grants have a maximum lifetime the administrator sets. The README states that the connection outlives deprovisioning until then, and how to end it sooner. |
 
 ## Hardening the deployment
 
-{{HARDENING_THE_DEPLOYMENT}}
+- Serve iTop over **HTTPS** only. OAuth over plain HTTP hands every code and token to the network.
+- Keep the **redirect URI allowlist** to the clients the instance actually uses.
+- Set the **maximum grant lifetime** to what the organisation's offboarding can tolerate.
+- Restrict `personal_tokens_allowed_profiles` if not everyone who signs in should be able to
+  connect a client.
 
 ## Dependencies
 
-{{DEPENDENCIES}}
+None beyond iTop. The extension depends on the `authent-token` module that ships with iTop
+and on PHP's own functions. If a Composer dependency is ever added, the SBOM above is where it
+shows up.

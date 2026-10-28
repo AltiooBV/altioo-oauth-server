@@ -5,9 +5,8 @@ tool that looks elsewhere. It is deliberately thin: almost everything below is a
 
 `altioo-oauth-server` is an iTop extension that makes iTop its own OAuth 2.1 authorization
 server, so that Claude web and other OAuth clients can reach altioo-mcp and iTop's REST/JSON
-API with an ordinary iTop `PersonalToken`. The repository was created from the
-[altioo-itop-extension](https://github.com/AltiooBV/altioo-itop-extension) template on
-2026-10-28 and holds no extension code yet.
+API with an ordinary iTop `PersonalToken`. [`README.md`](README.md) says what it is for
+its users.
 
 ## 1. Read the development guide before the first edit
 
@@ -23,10 +22,10 @@ dated. For Claude Code, `tools/hooks/guide-gate.sh` refuses the first edit until
   and do not restate it here: when it is settled, it moves into `doc/` and this line goes.
 - **A throwaway spike comes before production code.** The design note lists what it must
   prove; its code is not the start of the extension.
-- **The template is not finished.** [`TEMPLATE-CHECKLIST.md`](TEMPLATE-CHECKLIST.md) lists
-  what instantiation left open: `extension.xml` (CI is red without it), the `{{...}}` sections
-  of `CONTRIBUTING.md` and `SECURITY.md`, the README, the changelog. Delete the checklist once
-  it is done.
+- **The module is at its first increment, 0.1.0, unreleased.** The spike it replaces lives on
+  `spike/claude-connect`. What still has to exist before the first publication (the background
+  clean-up of codes and ended grants among it) is in
+  [`doc/release-checklist.md`](doc/release-checklist.md), "Before the first publication".
 
 ## 3. Decisions an agent could undo
 
@@ -37,6 +36,8 @@ Each line points at its record in `doc/adr/`. Read the record before arguing wit
 - Free and AGPL-3.0, like altioo-mcp: no paid edition, no licence check in the code (ADR 0002).
 - Protected resources come from the `resources` setting. 1.0 ships two, altioo-mcp and
   REST/JSON, and no code path is specific to altioo-mcp (ADR 0003).
+- A grant owns one `PersonalToken`, and a refresh renews its value in place. Never create a new
+  row per refresh (ADR 0004).
 
 ## 4. If your harness has its own instruction file
 
