@@ -48,8 +48,10 @@ Settings agent skills read here.
 
 - **Guide:** [`doc/itop-extension-guide.md`](doc/itop-extension-guide.md) — §1 above; the
   review passes are in it.
-- **Review:** [`review/review-personas.md`](review/review-personas.md) — none added yet.
-  Findings go beside it and are gitignored; only the list is tracked.
+- **Review:** [`review/review-personas.md`](review/review-personas.md) — the guide's passes plus
+  five this extension adds: the outsider with a link, the grant that grows, the OAuth client, the
+  person who connects, the identity administrator. Findings go beside it and are gitignored;
+  only the list is tracked.
 - **Decisions:** `doc/adr/`, numbered; each one an agent could undo also has a line in §3.
 - **Tests:** `CONTRIBUTING.md`, "Before a pull request"; `tools/ci/local/run.sh` for the PHP
   floor and ceiling. Nothing runs until `extension.xml` exists.
