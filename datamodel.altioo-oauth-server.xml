@@ -546,7 +546,7 @@
           <type>LifecycleAction</type>
           <code><![CDATA[	public function Revoke()
 	{
-		\Altioo\iTop\Extension\OAuthServer\Service\Grants::End($this, 'revoked', false);
+		\Altioo\iTop\Extension\OAuthServer\Service\Grants::End($this, 'revoked', false, false);
 
 		return true;
 	}]]></code>
@@ -812,8 +812,20 @@
       </redirect_uris>
       <!-- Also accept http://localhost and http://127.0.0.1 on any port and path (RFC 8252), for local clients. -->
       <allow_loopback type="bool">false</allow_loopback>
-      <!-- Registrations accepted from one IP address per hour. -->
-      <registration_rate_limit type="int">30</registration_rate_limit>
+      <!--
+        Registrations accepted from one IP address per hour. Generous on purpose:
+        every person who connects Claude registers from Anthropic's addresses.
+      -->
+      <registration_rate_limit type="int">300</registration_rate_limit>
+      <!-- Registrations accepted per hour from all addresses together. -->
+      <registration_global_limit type="int">1000</registration_global_limit>
+      <!--
+        Origins allowed to read the metadata, registration and token responses
+        from a browser, for browser-based clients such as the MCP Inspector.
+        Empty sends no CORS header at all, which is what Claude, calling from
+        its servers, needs. Never "*".
+      -->
+      <allowed_origins type="array"/>
       <code_lifetime type="int">60</code_lifetime>
       <access_token_lifetime type="int">3600</access_token_lifetime>
       <!-- How long a rotated refresh token is still accepted, so that a lost response does not end a connection. -->

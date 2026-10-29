@@ -77,6 +77,18 @@ final class ScopePolicy
 	}
 
 	/**
+	 * What a grant made earlier may still carry under today's policy: what it was granted that
+	 * is still offered, plus what is forced now.
+	 *
+	 * @param list<string> $aGranted
+	 * @return list<string> empty when nothing it was granted is still offered
+	 */
+	public function Current(array $aGranted): array
+	{
+		return $this->Granted($this->Offered([]), $aGranted);
+	}
+
+	/**
 	 * @return list<string>
 	 */
 	public function Forced(): array

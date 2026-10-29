@@ -28,10 +28,12 @@ final class Grants
 	 * happened; its token is deleted, so nothing it issued still works.
 	 *
 	 * @param bool $bSave false when the caller writes the grant itself, as a lifecycle action does
+	 * @param bool $bByThisModule true when this module ends it on its own, and the history names
+	 *     the client; false when a person ends it, and the history names them
 	 */
-	public static function End(AltiooOAuthGrant $oGrant, string $sReason, bool $bSave = true): void
+	public static function End(AltiooOAuthGrant $oGrant, string $sReason, bool $bSave = true, bool $bByThisModule = true): void
 	{
-		PersonalTokens::Delete((int) $oGrant->Get('personal_token_id'), self::ClientName($oGrant));
+		PersonalTokens::Delete((int) $oGrant->Get('personal_token_id'), $bByThisModule ? self::ClientName($oGrant) : null);
 		// Values nobody holds: an empty one would match an empty secret.
 		$oGrant->Set('refresh_secret', Secret::NewSecret());
 		$oGrant->Set('previous_refresh_secret', Secret::NewSecret());
@@ -46,6 +48,9 @@ final class Grants
 	}
 
 	/**
+	 * A grant whose token was deleted is ended here rather than listed: the person who deleted
+	 * it would otherwise still see it as connected until the client's next refresh.
+	 *
 	 * @return list<AltiooOAuthGrant>
 	 */
 	public static function ActiveFor(int $iUserId): array
@@ -55,6 +60,10 @@ final class Grants
 		$oSet = new DBObjectSet($oSearch, ['creation_date' => false], ['user' => $iUserId]);
 		$aGrants = [];
 		while ($oGrant = $oSet->Fetch()) {
+			if (PersonalTokens::Find((int) $oGrant->Get('personal_token_id')) === null) {
+				self::End($oGrant, 'disconnected');
+				continue;
+			}
 			$aGrants[] = $oGrant;
 		}
 

@@ -13,6 +13,8 @@ use Altioo\iTop\Extension\OAuthServer\Exception\OAuthException;
 use Altioo\iTop\Extension\OAuthServer\Http;
 use Altioo\iTop\Extension\OAuthServer\RedirectUriPolicy;
 use Altioo\iTop\Extension\OAuthServer\Secret;
+use CMDBObject;
+use Combodo\iTop\Core\CMDBChange\CMDBChangeOrigin;
 use DBObjectSearch;
 use DBObjectSet;
 use MetaModel;
@@ -75,6 +77,8 @@ final class RegistrationController
 			'registered_from_ip' => mb_substr($sIp, 0, 45),
 			'creation_date' => date('Y-m-d H:i:s', $iNow),
 		]);
+		CMDBObject::SetTrackInfo('OAuth: registration from '.mb_substr($sIp, 0, 45));
+		CMDBObject::SetTrackOrigin(CMDBChangeOrigin::CUSTOM_EXTENSION);
 		$oClient->AllowWrite();
 		$oClient->DBInsert();
 
@@ -89,13 +93,27 @@ final class RegistrationController
 		]);
 	}
 
+	/**
+	 * Per address, and for all addresses together: an attacker on IPv6 has as many addresses
+	 * as they like, and every person connecting Claude shares Anthropic's few.
+	 */
 	private static function CheckRateLimit(string $sIp): void
 	{
-		$oSearch = DBObjectSearch::FromOQL('SELECT AltiooOAuthClient WHERE registered_from_ip = :ip AND creation_date > :since');
-		$oSearch->AllowAllData();
-		$oSet = new DBObjectSet($oSearch, [], ['ip' => $sIp, 'since' => date('Y-m-d H:i:s', time() - 3600)]);
-		if ($oSet->Count() >= Config::RegistrationRateLimit()) {
-			throw new OAuthException('invalid_request', 'too many registrations from this address; try again later', 429);
+		$sSince = date('Y-m-d H:i:s', time() - 3600);
+		if (self::CountSince('SELECT AltiooOAuthClient WHERE registered_from_ip = :ip AND creation_date > :since', ['ip' => $sIp, 'since' => $sSince]) >= Config::RegistrationRateLimit()
+			|| self::CountSince("SELECT AltiooOAuthClient WHERE source = 'dcr' AND creation_date > :since", ['since' => $sSince]) >= Config::RegistrationGlobalLimit()) {
+			throw new OAuthException('invalid_request', 'too many registrations; try again later', 429);
 		}
+	}
+
+	/**
+	 * @param array<string, string> $aParams
+	 */
+	private static function CountSince(string $sOql, array $aParams): int
+	{
+		$oSearch = DBObjectSearch::FromOQL($sOql);
+		$oSearch->AllowAllData();
+
+		return (new DBObjectSet($oSearch, [], $aParams))->Count();
 	}
 }

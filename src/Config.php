@@ -47,7 +47,20 @@ final class Config
 
 	public static function RegistrationRateLimit(): int
 	{
-		return max(1, (int) self::Get('registration_rate_limit', 30));
+		return max(1, (int) self::Get('registration_rate_limit', 300));
+	}
+
+	public static function RegistrationGlobalLimit(): int
+	{
+		return max(1, (int) self::Get('registration_global_limit', 1000));
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	public static function AllowedOrigins(): array
+	{
+		return self::StringList(self::Get('allowed_origins', []));
 	}
 
 	public static function CodeLifetime(): int
@@ -112,7 +125,9 @@ final class Config
 					self::StringList($aResource['offered_scopes'] ?? []),
 					self::StringList($aResource['default_scopes'] ?? []),
 					self::StringList($aResource['forced_scopes'] ?? [])
-				)
+				),
+				self::StringList($aResource['required_profiles'] ?? []),
+				self::Grades($aResource['grades'] ?? [])
 			);
 		}
 
@@ -140,10 +155,21 @@ final class Config
 				'url' => rtrim(utils::GetAbsoluteUrlModulesRoot(), '/').'/altioo-mcp/index.php',
 				'scope_prefix' => 'MCP',
 				'default_scopes' => ['MCP-read'],
+				'required_profiles' => self::StringList(MetaModel::GetModuleSetting('altioo-mcp', 'mcp_allowed_profiles', ['Administrator', 'MCP Services User'])),
+				'grades' => [
+					['label' => 'UI:AltiooOAuthServer:Grade:Read', 'scopes' => ['MCP-read']],
+					['label' => 'UI:AltiooOAuthServer:Grade:Write', 'scopes' => ['MCP-write']],
+					['label' => 'UI:AltiooOAuthServer:Grade:Delete', 'scopes' => ['MCP-write', 'MCP-delete']],
+					['label' => 'UI:AltiooOAuthServer:Grade:All', 'scopes' => ['MCP']],
+				],
 			],
 			'rest' => [
 				'url' => utils::GetAbsoluteUrlAppRoot().'webservices/rest.php',
 				'scope_prefix' => 'REST/JSON',
+				// rest.php's own rule (webservices/rest.php, authent-token's AbstractPersonalToken).
+				'required_profiles' => MetaModel::GetConfig()->Get('secure_rest_services') && !MetaModel::GetConfig()->Get('allow_rest_services_via_tokens')
+					? ['REST Services User']
+					: [],
 			],
 		];
 	}
@@ -158,6 +184,21 @@ final class Config
 		$aValues = MetaModel::GetAttributeDef(PersonalToken::class, 'scope')->GetPossibleValues();
 
 		return is_array($aValues) ? array_values(array_filter(array_map('strval', array_keys($aValues)), 'strlen')) : [];
+	}
+
+	/**
+	 * @return list<array{label: string, scopes: list<string>}>
+	 */
+	private static function Grades(mixed $value): array
+	{
+		$aGrades = [];
+		foreach (is_array($value) ? $value : [] as $aGrade) {
+			if (is_array($aGrade) && is_string($aGrade['label'] ?? null) && self::StringList($aGrade['scopes'] ?? []) !== []) {
+				$aGrades[] = ['label' => $aGrade['label'], 'scopes' => self::StringList($aGrade['scopes'])];
+			}
+		}
+
+		return $aGrades;
 	}
 
 	/**

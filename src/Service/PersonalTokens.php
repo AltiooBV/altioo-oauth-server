@@ -40,10 +40,7 @@ final class PersonalTokens
 		$oToken = new PersonalToken();
 		$oToken->Set('user_id', $iUserId);
 		$oToken->Set('application', mb_substr('OAuth: '.$sClientName, 0, 255));
-		// AttributeSet takes a string or an ormSet; an array is dropped without a word.
-		$oScope = new ormSet(MetaModel::GetAttributeOrigin(PersonalToken::class, 'scope'), 'scope');
-		$oScope->SetValues($aScopes);
-		$oToken->Set('scope', $oScope);
+		$oToken->Set('scope', self::ScopeSet($aScopes));
 		$oToken->Set('expiration_date', self::DateIn($iLifetime));
 		$oToken->AllowWrite();
 		$oToken->DBInsert();
@@ -57,12 +54,16 @@ final class PersonalTokens
 	 *
 	 * @return string the new value in clear
 	 */
-	public static function Renew(PersonalToken $oToken, string $sClientName, int $iLifetime): string
+	/**
+	 * @param list<string> $aScopes what the grant carries now, which today's policy may have narrowed
+	 */
+	public static function Renew(PersonalToken $oToken, string $sClientName, int $iLifetime, array $aScopes): string
 	{
 		self::Track($sClientName);
 		$oService = new AuthentTokenService();
 		$sValue = $oService->CreateNewToken($oToken);
 		$oToken->Set('auth_token', $oService->CreatePassword($sValue));
+		$oToken->Set('scope', self::ScopeSet($aScopes));
 		$oToken->Set('expiration_date', self::DateIn($iLifetime));
 		$oToken->AllowWrite();
 		$oToken->DBUpdate();
@@ -80,13 +81,20 @@ final class PersonalTokens
 		return $oToken instanceof PersonalToken ? $oToken : null;
 	}
 
-	public static function Delete(int $iKey, string $sClientName): void
+	/**
+	 * @param string|null $sClientName the client, when this module ends the connection on its
+	 *     own (the token endpoint, the clean-up); null when a person does, from the console or My
+	 *     Account, so that the history names them
+	 */
+	public static function Delete(int $iKey, ?string $sClientName): void
 	{
 		$oToken = self::Find($iKey);
 		if ($oToken === null) {
 			return;
 		}
-		self::Track($sClientName);
+		if ($sClientName !== null) {
+			self::Track($sClientName);
+		}
 		$oToken->AllowWrite();
 		$oToken->DBDelete();
 	}
@@ -100,6 +108,19 @@ final class PersonalTokens
 		return $oUser !== null
 			&& $oUser->Get('status') === 'enabled'
 			&& PersonalTokenService::GetInstance()->IsPersonalTokenManagementAllowed($oUser);
+	}
+
+	/**
+	 * AttributeSet takes a string or an ormSet; an array is dropped without a word.
+	 *
+	 * @param list<string> $aScopes
+	 */
+	private static function ScopeSet(array $aScopes): ormSet
+	{
+		$oScope = new ormSet(MetaModel::GetAttributeOrigin(PersonalToken::class, 'scope'), 'scope');
+		$oScope->SetValues($aScopes);
+
+		return $oScope;
 	}
 
 	private static function Track(string $sClientName): void

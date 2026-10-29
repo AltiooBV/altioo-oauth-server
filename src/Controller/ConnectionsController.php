@@ -39,7 +39,7 @@ final class ConnectionsController
 		if ($oGrant instanceof AltiooOAuthGrant
 			&& (int) $oGrant->Get('user_id') === (int) UserRights::GetUserId()
 			&& $oGrant->Get('status') === 'active') {
-			Grants::End($oGrant, 'withdrawn');
+			Grants::End($oGrant, 'withdrawn', true, false);
 		}
 
 		Http::Redirect(utils::GetAbsoluteUrlModulePage('combodo-my-account', 'index.php'));

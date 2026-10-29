@@ -16,6 +16,7 @@ use Altioo\iTop\Extension\OAuthServer\Pkce;
 use Altioo\iTop\Extension\OAuthServer\Secret;
 use Altioo\iTop\Extension\OAuthServer\Service\Grants;
 use Altioo\iTop\Extension\OAuthServer\Service\PersonalTokens;
+use CMDBSource;
 use MetaModel;
 use AltiooOAuthCode;
 use AltiooOAuthClient;
@@ -86,7 +87,14 @@ final class TokenController
 			}
 			throw new OAuthException('invalid_grant', 'code already used');
 		}
-		self::Save($oCode, ['grant_id' => -1]);
+		// Claimed with a conditional update, so that two concurrent exchanges of one code
+		// cannot both get past this line.
+		$sTable = MetaModel::DBGetTable(AltiooOAuthCode::class);
+		$sKey = MetaModel::DBGetKey(AltiooOAuthCode::class);
+		CMDBSource::Query("UPDATE `$sTable` SET `grant_id` = -1 WHERE `$sKey` = ".(int) $oCode->GetKey().' AND `grant_id` = 0');
+		if (CMDBSource::AffectedRows() !== 1) {
+			throw new OAuthException('invalid_grant', 'code already used');
+		}
 
 		$oResource = Config::Resources()[$oCode->Get('resource')] ?? null;
 		$sChallenge = (string) $oCode->Get('code_challenge');
@@ -101,7 +109,7 @@ final class TokenController
 		}
 
 		$oUser = MetaModel::GetObject(User::class, $oCode->Get('user_id'), false, true);
-		if (!$oUser instanceof User || !PersonalTokens::IsAllowedFor($oUser)) {
+		if (!$oUser instanceof User || !PersonalTokens::IsAllowedFor($oUser) || !$oResource->AllowsUser($oUser)) {
 			throw new OAuthException('invalid_grant', 'this account can no longer be connected');
 		}
 
@@ -162,7 +170,10 @@ final class TokenController
 			}
 		}
 
-		if (strtotime((string) $oGrant->Get('expiration_date')) < $iNow) {
+		// Both the end fixed when the grant was made and the one today's setting gives: an
+		// administrator who lowers max_grant_days means it for connections already made.
+		$iCreated = (int) strtotime((string) $oGrant->Get('creation_date'));
+		if (strtotime((string) $oGrant->Get('expiration_date')) < $iNow || $iCreated + Config::MaxGrantDays() * 86400 < $iNow) {
 			Grants::End($oGrant, 'expired');
 			throw new OAuthException('invalid_grant', 'the connection has expired');
 		}
@@ -170,10 +181,18 @@ final class TokenController
 			Grants::End($oGrant, 'idle');
 			throw new OAuthException('invalid_grant', 'the connection was unused for too long');
 		}
+		$oResource = Config::Resources()[$oGrant->Get('resource')] ?? null;
 		$oUser = MetaModel::GetObject(User::class, $oGrant->Get('user_id'), false, true);
-		if (!$oUser instanceof User || !PersonalTokens::IsAllowedFor($oUser)) {
+		if (!$oUser instanceof User || !PersonalTokens::IsAllowedFor($oUser) || $oResource === null || !$oResource->AllowsUser($oUser)) {
 			Grants::End($oGrant, 'account');
 			throw new OAuthException('invalid_grant', 'this account can no longer be connected');
+		}
+		// The scopes as today's policy allows them: an administrator who narrows a resource's
+		// offer, or forces a scope, means it for connections already made.
+		$aScopes = $oResource->oScopes->Current(explode(' ', (string) $oGrant->Get('scope')));
+		if ($aScopes === []) {
+			Grants::End($oGrant, 'revoked');
+			throw new OAuthException('invalid_grant', 'nothing granted is offered any more');
 		}
 		// Deleted under My Account: the person disconnected.
 		$oToken = PersonalTokens::Find((int) $oGrant->Get('personal_token_id'));
@@ -182,19 +201,22 @@ final class TokenController
 			throw new OAuthException('invalid_grant', 'the connection was ended');
 		}
 
-		$sAccessToken = PersonalTokens::Renew($oToken, (string) $oClient->Get('client_name'), Config::AccessTokenLifetime());
+		$sAccessToken = PersonalTokens::Renew($oToken, (string) $oClient->Get('client_name'), Config::AccessTokenLifetime(), $aScopes);
 		$sNewSecret = Secret::NewSecret();
-		if ($bCurrent) {
-			$oGrant->Set('previous_refresh_secret', $oGrant->Get('refresh_secret'));
-		}
+		// Always the current one, also when the previous one was presented in the grace period.
+		// Keeping the older one there instead would let whoever presented it take the grant
+		// over: the legitimate client's token would then be neither, and its next refresh an
+		// ordinary refusal rather than a detected reuse.
+		$oGrant->Set('previous_refresh_secret', $oGrant->Get('refresh_secret'));
 		$oGrant->Set('refresh_secret', $sNewSecret);
+		$oGrant->Set('scope', implode(' ', $aScopes));
 		$oGrant->Set('last_refresh_date', date('Y-m-d H:i:s', $iNow));
 		$oGrant->Set('last_refresh_ip', self::ClientIp());
 		$oGrant->AllowWrite();
 		$oGrant->DBUpdate();
 		self::Save($oClient, ['last_used_date' => date('Y-m-d H:i:s', $iNow)]);
 
-		self::Issued($sAccessToken, Secret::Join((int) $oGrant->GetKey(), $sNewSecret), explode(' ', (string) $oGrant->Get('scope')));
+		self::Issued($sAccessToken, Secret::Join((int) $oGrant->GetKey(), $sNewSecret), $aScopes);
 	}
 
 	/**

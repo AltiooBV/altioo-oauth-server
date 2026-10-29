@@ -96,8 +96,14 @@ whichever comes first. The person then signs in again.
 - **An administrator**, under *Admin tools*, *OAuth connections*: open the connection and use
   *Revoke*. Disabling a client under *OAuth clients* ends each of its connections at its next
   refresh, and refuses new ones.
-- **iTop itself**, when the account is disabled, or no longer allowed personal tokens: the next
-  refresh fails and the connection ends.
+- **iTop itself**, when the account is disabled, or no longer allowed personal tokens, or no
+  longer holds a profile the resource requires: the next refresh fails and the connection ends.
+- **All of one person's connections at once:** *OAuth connections*, search on the user, then
+  *Revoke* each; or disable the iTop user, which ends each connection at its next refresh, at
+  most `access_token_lifetime` later.
+
+Lowering `max_grant_days` or `grant_idle_days`, or narrowing a resource's scopes, applies to
+connections already made, from their next refresh.
 
 Every way above deletes the connection's token, so the application loses access at once. The
 one exception is disabling a client: its tokens keep working until they expire, at most
@@ -107,6 +113,8 @@ one exception is disabling a client: its tokens keep working until they expire, 
 there does not disable their iTop user. Their connections keep working until the next limit is
 reached (`grant_idle_days` or `max_grant_days`), or until the iTop user is disabled. Set
 `max_grant_days` to what your offboarding can tolerate, and disable the iTop user as part of it.
+A lower `max_grant_days` takes effect at each connection's next refresh, at most
+`access_token_lifetime` later.
 
 ## Requirements
 
@@ -117,6 +125,7 @@ reached (`grant_idle_days` or `max_grant_days`), or until the iTop user is disab
 | Login mode | `token` in `allowed_login_types`, as for any personal token |
 | HTTPS | Required. OAuth over plain HTTP hands every code and token to the network. |
 | Network | The client's servers must reach iTop. For Claude, that is Anthropic's addresses. |
+| Cron | iTop's `webservices/cron.php` running, for the hourly clean-up. Without it, a connection past its lifetime keeps its token until its client next tries to refresh. |
 | Web server | Apache with `AllowOverride` for the module's `.htaccess`, or IIS with the URL Rewrite module for its `web.config` |
 | REST/JSON | A person reaches `rest.php` with a token only with `allow_rest_services_via_tokens` set, or the *REST Services User* profile |
 
@@ -133,7 +142,10 @@ reached (`grant_idle_days` or `max_grant_days`), or until the iTop user is disab
    `https://<itop>/env-production/altioo-oauth-server/index.php?route=protected-resource&for=mcp`.
    That is how Claude finds this server from the MCP endpoint.
 
-Then, in Claude, add a custom connector with the altioo-mcp endpoint URL and choose *Connect*.
+Then, in Claude, add a custom connector with the altioo-mcp endpoint URL, exactly
+`https://<itop>/env-production/altioo-mcp/index.php`, and choose *Connect*. Another spelling of
+it (through `extensions/`, or without `index.php`) is not the resource this server knows, and
+the iTop page says "Unknown resource".
 
 ### Discovery at the site root
 
@@ -163,7 +175,9 @@ In the configuration file, under `$MyModuleSettings['altioo-oauth-server']`.
 |---|---|---|
 | `redirect_uris` | `['https://claude.ai/api/mcp/auth_callback']` | The only redirect URIs a client may register, matched exactly |
 | `allow_loopback` | `false` | Also accept `http://localhost`, `127.0.0.1` and `[::1]` on any port, for local clients |
-| `registration_rate_limit` | `30` | Registrations accepted from one IP address per hour |
+| `registration_rate_limit` | `300` | Registrations accepted from one IP address per hour. Every person connecting Claude registers from Anthropic's addresses, so keep it well above the number of people who may connect in an hour. |
+| `registration_global_limit` | `1000` | Registrations accepted per hour from all addresses together |
+| `allowed_origins` | empty | Origins allowed to read the metadata, registration and token responses from a browser, for browser-based clients such as the MCP Inspector. Empty sends no CORS header, which is what Claude needs. |
 | `code_lifetime` | `60` | Seconds an authorization code is valid |
 | `access_token_lifetime` | `3600` | Seconds an access token is valid before the client refreshes it |
 | `refresh_grace_seconds` | `30` | How long a replaced refresh token is still accepted, so that a lost response does not end a connection |
@@ -182,9 +196,19 @@ In the configuration file, under `$MyModuleSettings['altioo-oauth-server']`.
 		'default_scopes' => ['MCP-read'],     // pre-ticked on the consent page
 		'offered_scopes' => [],               // empty: the whole family; otherwise only these
 		'forced_scopes' => ['MCP-advisory'],  // always added, whatever the person ticks
+		'required_profiles' => ['Administrator', 'MCP Services User'], // refused before consent without one
+		'grades' => [                         // radio buttons instead of a checkbox per scope
+			['label' => 'UI:AltiooOAuthServer:Grade:Read', 'scopes' => ['MCP-read']],
+			['label' => 'UI:AltiooOAuthServer:Grade:Write', 'scopes' => ['MCP-write']],
+		],
 	],
 ],
 ```
+
+The defaults: for altioo-mcp, its `mcp_allowed_profiles` as `required_profiles`, and four
+grades (read only; read and change; read, change and delete; everything); for REST/JSON, the
+*REST Services User* profile when `rest.php` requires it (`secure_rest_services` on and
+`allow_rest_services_via_tokens` off). A grade's `label` is a dictionary key or plain text.
 
 `url` must be the resource's URL exactly as clients send it. Setting `resources` replaces both
 defaults, so list every resource to keep.
@@ -223,8 +247,11 @@ cannot be undone.
 
 ## Troubleshooting
 
-The module logs on the `altioo-oauth-server` channel of iTop's error log: unexpected errors,
-and one line per clean-up run. No code, token or refresh value is ever logged.
+The module logs on the `altioo-oauth-server` channel of iTop's error log, with iTop's default
+log level: unexpected errors (Error), every refusal with its reason and the caller's address
+(Warning), and one line per clean-up run (Ok). No code, token, secret or refresh value is ever
+logged. Raise the level for this channel alone with
+`'log_level_min' => ['altioo-oauth-server' => 'Debug']` in the configuration file.
 
 | Symptom | Usual cause |
 |---|---|

@@ -60,4 +60,15 @@ final class ScopePolicyTest extends TestCase
 		$this->assertSame(['MCP-read'], (new ScopePolicy(self::FAMILY, [], ['MCP-read']))->Preselected(self::FAMILY));
 		$this->assertSame(['MCP-write'], (new ScopePolicy(self::FAMILY, [], ['MCP-read']))->Preselected(['MCP-write']));
 	}
+
+	public function testAGrantMadeEarlierIsNarrowedToTodaysOffer(): void
+	{
+		$oPolicy = new ScopePolicy(self::FAMILY, ['MCP-read'], [], ['MCP-advisory']);
+		$this->assertSame(['MCP-read', 'MCP-advisory'], $oPolicy->Current(['MCP-read', 'MCP-write']));
+	}
+
+	public function testAGrantWithNothingStillOfferedKeepsNothing(): void
+	{
+		$this->assertSame([], (new ScopePolicy(self::FAMILY, ['MCP-read'], [], ['MCP-advisory']))->Current(['MCP-write']));
+	}
 }

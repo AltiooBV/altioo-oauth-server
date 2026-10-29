@@ -134,6 +134,12 @@ expect "within the grace period the previous refresh token is accepted once more
 sAccess3=$(printf '%s' "$sTok" | json_field access_token)
 sRefresh3=$(printf '%s' "$sTok" | json_field refresh_token)
 expect "the token renewed in the grace period works" "$(rest_get "$sAccess3")" '"code":0'
+# Whoever used the previous token in the grace period must not have dropped the legitimate
+# client's: it is now the previous one, accepted within the grace period, and a reuse after it.
+sTok=$(curl -sS -d grant_type=refresh_token --data-urlencode "refresh_token=$sRefresh2" -d "client_id=$sClient" "$ENDPOINT?route=token")
+expect "the legitimate client's refresh token survives a use of the previous one" "$sTok" '"access_token"'
+sAccess3=$(printf '%s' "$sTok" | json_field access_token)
+sRefresh3=$(printf '%s' "$sTok" | json_field refresh_token)
 
 if [ -z "$ITOP_TOKEN" ] || [ "${ITOP_TOKEN#*:}" = "$ITOP_TOKEN" ]; then
 	rm -f "$JAR"

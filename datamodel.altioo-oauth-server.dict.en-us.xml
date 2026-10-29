@@ -162,6 +162,14 @@
         <entry id="Class:AltiooOAuthClient/Attribute:pkce/Value:optional+" _delta="force"><![CDATA[The secret binds the code to the client instead]]></entry>
         <entry id="Class:AltiooOAuthClient/Attribute:default_resource" _delta="force"><![CDATA[Default resource]]></entry>
         <entry id="Class:AltiooOAuthClient/Attribute:default_resource+" _delta="force"><![CDATA[Key of the resource (mcp, rest, or one of the resources setting) used when the client does not say which it wants]]></entry>
+        <entry id="UI:AltiooOAuthServer:Grade:Read" _delta="force"><![CDATA[Read only]]></entry>
+        <entry id="UI:AltiooOAuthServer:Grade:Write" _delta="force"><![CDATA[Read and change, never delete]]></entry>
+        <entry id="UI:AltiooOAuthServer:Grade:Delete" _delta="force"><![CDATA[Read, change and delete]]></entry>
+        <entry id="UI:AltiooOAuthServer:Grade:All" _delta="force"><![CDATA[Everything I can do]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:Also" _delta="force"><![CDATA[And, if you want:]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:OnlyYours" _delta="force"><![CDATA[Allow only if you started this connection yourself, just now. If someone sent you this link, deny.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:ResourceNotAllowed" _delta="force"><![CDATA[Not available for your account]]></entry>
+        <entry id="UI:AltiooOAuthServer:Page:ResourceNotAllowed+" _delta="force"><![CDATA[Your profiles do not give access to what this application asks for, so every call it made would be refused. Ask your iTop administrator.]]></entry>
       </entries>
     </dictionary>
   </dictionaries>

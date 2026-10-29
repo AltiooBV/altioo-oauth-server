@@ -41,6 +41,8 @@ final class AuthorizationController
 {
 	private const SESSION_KEY = 'altioo-oauth-server';
 	private const REQUEST_LIFETIME = 600;
+	/** Requests one session may have pending: a person rarely starts more than one or two. */
+	private const MAX_PENDING_REQUESTS = 10;
 
 	public static function Authorize(): never
 	{
@@ -76,6 +78,11 @@ final class AuthorizationController
 		$oResource = Config::Resources()[$aRequest['resource']] ?? null;
 		if ($oClient === null || $oResource === null) {
 			throw new PageException('UI:AltiooOAuthServer:Page:RequestExpired');
+		}
+		// The resource would refuse every call with this account's token: say so now, rather
+		// than let the connection succeed and then fail.
+		if (!$oResource->AllowsUser($oUser)) {
+			throw new PageException('UI:AltiooOAuthServer:Page:ResourceNotAllowed', 403);
 		}
 		$aOffered = $oResource->oScopes->Offered($aRequest['scope']);
 
@@ -119,6 +126,7 @@ final class AuthorizationController
 
 		$sRequestId = bin2hex(random_bytes(16));
 		$sScope = utils::ReadParam('scope', '', false, 'raw_data');
+		self::PrunePendingRequests();
 		Session::Set([self::SESSION_KEY, $sRequestId], [
 			'client_id' => $oClient->Get('client_id'),
 			'redirect_uri' => $sRedirectUri,
@@ -130,6 +138,22 @@ final class AuthorizationController
 		]);
 
 		return $sRequestId;
+	}
+
+	/**
+	 * Expired requests go, and the oldest ones beyond the cap: anyone can start requests, and a
+	 * session that only ever grew would be loaded and written whole on every request.
+	 */
+	private static function PrunePendingRequests(): void
+	{
+		$aPending = Session::Get(self::SESSION_KEY, []);
+		if (!is_array($aPending)) {
+			$aPending = [];
+		}
+		$aPending = array_filter($aPending, static fn($aRequest) => is_array($aRequest) && ($aRequest['expires'] ?? 0) >= time());
+		uasort($aPending, static fn(array $a, array $b) => $a['expires'] <=> $b['expires']);
+		$aPending = array_slice($aPending, -(self::MAX_PENDING_REQUESTS - 1), null, true);
+		Session::Set(self::SESSION_KEY, $aPending);
 	}
 
 	/**
@@ -174,6 +198,11 @@ final class AuthorizationController
 			Http::Redirect(self::WithQuery($aRequest['redirect_uri'], ['error' => 'access_denied'] + $aBack));
 		}
 		$aTicked = array_map('strval', (array) ($_POST['scopes'] ?? []));
+		$aGrades = self::UsableGrades($oResource, $aOffered);
+		$sGrade = utils::ReadPostedParam('grade', '', 'raw_data');
+		if (isset($aGrades[$sGrade])) {
+			$aTicked = array_merge($aTicked, $aGrades[$sGrade]['scopes']);
+		}
 		$aGranted = $oResource->oScopes->Granted($aOffered, $aTicked);
 		if ($aGranted === []) {
 			throw new PageException('UI:AltiooOAuthServer:Page:NothingSelected');
@@ -203,8 +232,33 @@ final class AuthorizationController
 	private static function ShowConsent(string $sRequestId, array $aRequest, AltiooOAuthClient $oClient, ProtectedResource $oResource, User $oUser, array $aOffered): never
 	{
 		$aPreselected = $oResource->oScopes->Preselected($aOffered);
+		$aGrades = self::UsableGrades($oResource, $aOffered);
 		$sScopes = '';
-		foreach ($aOffered as $sScope) {
+		if ($aGrades !== []) {
+			// One radio per grade, the first one whose scopes are all preselected checked; the
+			// scopes no grade covers (a rehearsal mode, a toolset) stay checkboxes below.
+			$sChosen = (string) array_key_first($aGrades);
+			foreach ($aGrades as $sIndex => $aGrade) {
+				if (array_diff($aGrade['scopes'], $aPreselected) === []) {
+					$sChosen = (string) $sIndex;
+					break;
+				}
+			}
+			foreach ($aGrades as $sIndex => $aGrade) {
+				$sChecked = (string) $sIndex === $sChosen ? ' checked' : '';
+				$sScopes .= '<label><input type="radio" name="grade" value="'.Http::Escape((string) $sIndex).'"'.$sChecked.'> '
+					.Http::Escape(Dict::S($aGrade['label'])).'</label>';
+			}
+			$aCovered = array_merge(...array_column($aGrades, 'scopes'));
+			$aPreselected = [];
+		} else {
+			$aCovered = [];
+		}
+		$aExtras = array_values(array_diff($aOffered, $aCovered));
+		if ($aGrades !== [] && $aExtras !== []) {
+			$sScopes .= '<p class="note">'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Consent:Also')).'</p>';
+		}
+		foreach ($aExtras as $sScope) {
 			$sChecked = in_array($sScope, $aPreselected, true) ? ' checked' : '';
 			$sScopes .= '<label><input type="checkbox" name="scopes[]" value="'.Http::Escape($sScope).'"'.$sChecked.'> '
 				.Http::Escape(self::ScopeLabel($sScope)).'</label>';
@@ -222,6 +276,7 @@ final class AuthorizationController
 		Http::Page(200, Dict::S('UI:AltiooOAuthServer:Consent:Title'),
 			'<p>'.Dict::Format('UI:AltiooOAuthServer:Consent:Who', "<strong>$sName</strong>", "<strong>$sLogin</strong>").'</p>'
 			.'<p class="note">'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Consent:SelfDeclared')).'</p>'
+			.'<p><strong>'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Consent:OnlyYours')).'</strong></p>'
 			.'<p>'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Consent:ReturnTo')).'</p>'
 			."<p class=\"host\">$sHost</p>"
 			.'<p>'.Http::Escape(Dict::Format('UI:AltiooOAuthServer:Consent:Resource', $oResource->sUrl)).'</p>'
@@ -234,6 +289,17 @@ final class AuthorizationController
 			.'<button type="submit" name="decision" value="deny">'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Consent:Deny')).'</button></p>'
 			.'</form>'
 			.'<p class="note">'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Consent:Disconnect')).'</p>');
+	}
+
+	/**
+	 * The resource's grades whose scopes the page may offer, keyed by their position.
+	 *
+	 * @param list<string> $aOffered
+	 * @return array<int, array{label: string, scopes: list<string>}>
+	 */
+	private static function UsableGrades(ProtectedResource $oResource, array $aOffered): array
+	{
+		return array_filter($oResource->aGrades, static fn(array $aGrade) => array_diff($aGrade['scopes'], $aOffered) === []);
 	}
 
 	public static function ScopeLabel(string $sScope): string

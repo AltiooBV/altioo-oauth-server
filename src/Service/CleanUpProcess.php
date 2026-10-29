@@ -49,7 +49,8 @@ final class CleanUpProcess implements iBackgroundProcess
 				['before' => self::Date($iNow - self::UNUSED_CLIENT_RETENTION)], (int) $iUnixTimeLimit),
 		];
 		$sSummary = vsprintf('%d connections ended, %d codes, %d ended connections and %d unused clients deleted', $aCounts);
-		IssueLog::Info($sSummary, Router::LOG_CHANNEL);
+		// At Ok, the default minimum level, so that the line is there without any configuration.
+		IssueLog::Ok($sSummary, Router::LOG_CHANNEL);
 
 		return $sSummary;
 	}

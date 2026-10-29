@@ -26,10 +26,15 @@ use utils;
 final class Router
 {
 	public const LOG_CHANNEL = 'altioo-oauth-server';
+	/** The routes a program calls; authorize and disconnect are pages, and need no CORS. */
+	private const CORS_ROUTES = ['openid-configuration', 'oauth-authorization-server', 'protected-resource', 'register', 'token'];
 
 	public static function HandleRequest(): never
 	{
 		$sRoute = utils::ReadParam('route', '', false, 'raw_data');
+		if (in_array($sRoute, self::CORS_ROUTES, true)) {
+			self::Cors();
+		}
 		try {
 			match ($sRoute) {
 				'openid-configuration', 'oauth-authorization-server' => MetadataController::ServerMetadata(),
@@ -41,11 +46,18 @@ final class Router
 				default => Http::OAuthError('invalid_request', 'unknown endpoint', 404),
 			};
 		} catch (OAuthException $e) {
+			// Every refusal leaves a line, without the values that were refused: a stream of
+			// failed client authentications or a reuse is otherwise invisible.
+			IssueLog::Warning("Refused on route $sRoute: {$e->sError}".($e->sDescription === '' ? '' : " ({$e->sDescription})"), self::LOG_CHANNEL, [
+				'status' => $e->iStatus,
+				'ip' => is_string($_SERVER['REMOTE_ADDR'] ?? null) ? $_SERVER['REMOTE_ADDR'] : '',
+			]);
 			if ($e->iStatus === 401) {
 				header('WWW-Authenticate: Basic realm="'.Config::MODULE.'"');
 			}
 			Http::OAuthError($e->sError, $e->sDescription, $e->iStatus);
 		} catch (PageException $e) {
+			IssueLog::Warning("Refused on route $sRoute: {$e->sKey}", self::LOG_CHANNEL, ['status' => $e->iStatus]);
 			Http::Page($e->iStatus, Dict::S($e->sKey), '<p>'.Http::Escape(Dict::S($e->sKey.'+')).'</p>');
 		} catch (Throwable $e) {
 			// The detail goes to the log only; the message may name a class or a query.
@@ -54,6 +66,27 @@ final class Router
 				Http::Page(500, Dict::S('UI:AltiooOAuthServer:Page:Error'), '<p>'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Page:Error+')).'</p>');
 			}
 			Http::OAuthError('server_error', '', 500);
+		}
+	}
+
+	/**
+	 * Only for an origin the administrator listed, and never "*": the token response is a
+	 * credential, and a page on another origin has no business reading it unless allowed.
+	 */
+	private static function Cors(): void
+	{
+		$sOrigin = is_string($_SERVER['HTTP_ORIGIN'] ?? null) ? $_SERVER['HTTP_ORIGIN'] : '';
+		if ($sOrigin === '' || !in_array($sOrigin, Config::AllowedOrigins(), true)) {
+			return;
+		}
+		header('Access-Control-Allow-Origin: '.$sOrigin);
+		header('Vary: Origin');
+		if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
+			header('Access-Control-Allow-Methods: GET, POST');
+			header('Access-Control-Allow-Headers: Authorization, Content-Type');
+			header('Access-Control-Max-Age: 600');
+			http_response_code(204);
+			exit;
 		}
 	}
 }

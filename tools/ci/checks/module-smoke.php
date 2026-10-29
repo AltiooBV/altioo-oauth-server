@@ -30,7 +30,9 @@ check('AltiooOAuthGrant has the Revoke stimulus', in_array('ev_revoke', array_ke
 $aDefaults = [
 	'redirect_uris' => ['https://claude.ai/api/mcp/auth_callback'],
 	'allow_loopback' => false,
-	'registration_rate_limit' => 30,
+	'registration_rate_limit' => 300,
+	'registration_global_limit' => 1000,
+	'allowed_origins' => [],
 	'code_lifetime' => 60,
 	'access_token_lifetime' => 3600,
 	'refresh_grace_seconds' => 30,
@@ -55,6 +57,9 @@ $aProcesses = InterfaceDiscovery::GetInstance()->FindItopClasses(iProcess::class
 check('cron finds the clean-up process', in_array(CleanUpProcess::class, $aProcesses, true));
 $aSections = InterfaceDiscovery::GetInstance()->FindItopClasses(iMyAccountTabContentExtension::class);
 check('My Account finds the Connected applications section', in_array(MyAccountConnections::class, $aSections, true));
+// The section hangs on authent-token's tab: a rename there would hide it without a word.
+check('the section is on authent-token\'s Personal Tokens tab', class_exists('Combodo\\iTop\\AuthentToken\\Hook\\MyAccountTabExtension')
+	&& (new Combodo\iTop\AuthentToken\Hook\MyAccountTabExtension())->GetTabCode() === (new MyAccountConnections())->GetTabCode());
 check('the My Account template is in the compiled module', is_file((new MyAccountConnections())->GetTemplatePath().'/oauthconnections.html.twig'));
 
 // A confidential client, created the way an administrator creates one in the console, for the

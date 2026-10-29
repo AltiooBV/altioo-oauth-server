@@ -16,11 +16,40 @@ namespace Altioo\iTop\Extension\OAuthServer;
  */
 final class ProtectedResource
 {
+	/**
+	 * @param list<string> $aRequiredProfiles the resource refuses anyone holding none of these;
+	 *     empty when it refuses nobody on profile grounds
+	 * @param list<array{label: string, scopes: list<string>}> $aGrades choices the consent page
+	 *     offers as one radio button each, instead of a checkbox per scope
+	 */
 	public function __construct(
 		public readonly string $sKey,
 		public readonly string $sUrl,
-		public readonly ScopePolicy $oScopes
+		public readonly ScopePolicy $oScopes,
+		public readonly array $aRequiredProfiles = [],
+		public readonly array $aGrades = []
 	)
 	{
+	}
+
+	/**
+	 * Whether the resource would accept a token of this account at all, checked before consent
+	 * so that a connection that could only fail is refused with a reason instead.
+	 *
+	 * @param list<string> $aProfiles the account's profile names
+	 */
+	public function AcceptsProfiles(array $aProfiles): bool
+	{
+		return $this->aRequiredProfiles === [] || array_intersect($this->aRequiredProfiles, $aProfiles) !== [];
+	}
+
+	public function AllowsUser(\User $oUser): bool
+	{
+		$aProfiles = [];
+		foreach ((array) \UserRights::ListProfiles($oUser) as $sProfile) {
+			$aProfiles[] = (string) $sProfile;
+		}
+
+		return $this->AcceptsProfiles($aProfiles);
 	}
 }
