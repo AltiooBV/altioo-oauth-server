@@ -9,7 +9,7 @@
  * out empty, the clean-up process cron would never find. No token is minted for the HTTP
  * smoke: the OAuth flow mints its own, which is what it checks. What is passed on instead is
  * a confidential client's credentials and the fixtures at the end of this file, as
- * "<client_id>:<secret>:<old connection's refresh token>:<login>:<password>".
+ * "<client_id>:<secret>:<old connection's refresh token>:<login>:<password>:<portal-era refresh token>".
  *
  * @copyright   Copyright (C) 2026 Altioo
  * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
@@ -29,7 +29,7 @@ foreach (['AltiooOAuthClient', 'AltiooOAuthGrant', 'AltiooOAuthCode'] as $sClass
 check('AltiooOAuthGrant has the Revoke stimulus', in_array('ev_revoke', array_keys(MetaModel::EnumStimuli('AltiooOAuthGrant')), true));
 
 $aDefaults = [
-	'redirect_uris' => ['https://claude.ai/api/mcp/auth_callback'],
+	'redirect_uris' => Config::DEFAULT_REDIRECT_URIS,
 	'allow_loopback' => false,
 	'registration_rate_limit' => 300,
 	'registration_global_limit' => 1000,
@@ -200,10 +200,20 @@ $oNoRest->AllowWrite();
 $oNoRest->DBInsert();
 check('the account without REST Services User is refused by the REST/JSON resource', !Altioo\iTop\Extension\OAuthServer\Config::Resources()['rest']->AllowsUser($oNoRest));
 
+// A connection allowed while the account was portal-only, whose account now has the console
+// (the smoke administrator does): its next refresh must end it, for consent again.
+$sPortalSecret = Altioo\iTop\Extension\OAuthServer\Secret::NewSecret();
+[$oPortalGrant] = $fnConnection(['console_access' => 'no']);
+$oPortalGrant->Set('refresh_secret', $sPortalSecret);
+$oPortalGrant->AllowWrite();
+$oPortalGrant->DBUpdate();
+check('the smoke administrator has the console', Altioo\iTop\Extension\OAuthServer\Service\Accounts::HasConsole($oAdminUser));
+
 $sHttpSmokeToken = implode(':', [
 	$oConfidential->Get('client_id'),
 	$sSmokeSecret,
 	Altioo\iTop\Extension\OAuthServer\Secret::Join((int) $oOld->GetKey(), $sOldSecret),
 	$sNoRestLogin,
 	$sNoRestPassword,
+	Altioo\iTop\Extension\OAuthServer\Secret::Join((int) $oPortalGrant->GetKey(), $sPortalSecret),
 ]);

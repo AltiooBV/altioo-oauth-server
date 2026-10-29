@@ -14,6 +14,7 @@ use Altioo\iTop\Extension\OAuthServer\Exception\OAuthException;
 use Altioo\iTop\Extension\OAuthServer\Http;
 use Altioo\iTop\Extension\OAuthServer\Pkce;
 use Altioo\iTop\Extension\OAuthServer\Secret;
+use Altioo\iTop\Extension\OAuthServer\Service\Accounts;
 use Altioo\iTop\Extension\OAuthServer\Service\Grants;
 use Altioo\iTop\Extension\OAuthServer\Service\PersonalTokens;
 use CMDBSource;
@@ -124,6 +125,7 @@ final class TokenController
 			'resource' => $oResource->sKey,
 			'scope' => $oCode->Get('scope'),
 			'personal_token_id' => $oToken->GetKey(),
+			'console_access' => $oCode->Get('console_access'),
 			'status' => 'active',
 			'creation_date' => date('Y-m-d H:i:s', $iNow),
 			'expiration_date' => date('Y-m-d H:i:s', $iNow + Config::MaxGrantDays() * 86400),
@@ -186,6 +188,14 @@ final class TokenController
 		if (!$oUser instanceof User || !PersonalTokens::IsAllowedFor($oUser) || $oResource === null || !$oResource->AllowsUser($oUser)) {
 			Grants::End($oGrant, 'account');
 			throw new OAuthException('invalid_grant', 'this account can no longer be connected');
+		}
+		// Allowed as a portal account, and the account has since been given the console: the
+		// person consented to a portal connection, and what the resource now serves it under the
+		// same grade is the console's. Consent again. Other profile changes need none: the
+		// resource reads the account's profiles on every call.
+		if ($oGrant->Get('console_access') === 'no' && Accounts::HasConsole($oUser)) {
+			Grants::End($oGrant, 'access_changed');
+			throw new OAuthException('invalid_grant', 'the account was given the console; connect again');
 		}
 		// The scopes as today's policy allows them: an administrator who narrows a resource's
 		// offer, or forces a scope, means it for connections already made.

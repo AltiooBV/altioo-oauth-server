@@ -67,4 +67,46 @@ final class RedirectUriPolicyTest extends TestCase
 			'another 127/8 address' => ['http://127.0.0.2/callback', false],
 		];
 	}
+
+	/**
+	 * @dataProvider perIntegration
+	 */
+	public function testAStarEntryMatchesOneMoreSegmentOnly(string $sUri, bool $bAllowed): void
+	{
+		$this->assertSame($bAllowed, (new RedirectUriPolicy(['https://chatgpt.com/connector/oauth/*'], false))->IsAllowed($sUri));
+	}
+
+	public static function perIntegration(): array
+	{
+		return [
+			'an integration id' => ['https://chatgpt.com/connector/oauth/abc_123-XYZ', true],
+			'the bare prefix' => ['https://chatgpt.com/connector/oauth/', false],
+			'two segments' => ['https://chatgpt.com/connector/oauth/abc/def', false],
+			'dot-segment' => ['https://chatgpt.com/connector/oauth/..', false],
+			'a segment starting with a dot' => ['https://chatgpt.com/connector/oauth/.x', false],
+			'query' => ['https://chatgpt.com/connector/oauth/abc?next=https://evil.example', false],
+			'fragment' => ['https://chatgpt.com/connector/oauth/abc#x', false],
+			'encoded slash' => ['https://chatgpt.com/connector/oauth/a%2Fb', false],
+			'another host' => ['https://chatgpt.com.evil.example/connector/oauth/abc', false],
+			'trailing newline' => ["https://chatgpt.com/connector/oauth/abc\n", false],
+		];
+	}
+
+	/**
+	 * @dataProvider unsafeEntries
+	 */
+	public function testAStarEntryThatIsTooWideMatchesNothing(string $sEntry, string $sUri): void
+	{
+		$this->assertFalse((new RedirectUriPolicy([$sEntry], false))->IsAllowed($sUri));
+	}
+
+	public static function unsafeEntries(): array
+	{
+		return [
+			'host only' => ['https://chatgpt.com/*', 'https://chatgpt.com/anything'],
+			'no slash before the star' => ['https://chatgpt.com/connector*', 'https://chatgpt.com/connectorX'],
+			'plain http' => ['http://chatgpt.com/connector/oauth/*', 'http://chatgpt.com/connector/oauth/abc'],
+			'a star in the host' => ['https://*.example/cb/*', 'https://a.example/cb/x'],
+		];
+	}
 }

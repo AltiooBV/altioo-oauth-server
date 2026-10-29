@@ -9,7 +9,7 @@
 # client registered by itself, then as the confidential client
 # checks/module-smoke.php created: no PKCE, no resource parameter, the secret in a
 # Basic header. ITOP_TOKEN carries that client and the other fixtures module-smoke.php
-# made, as "<client_id>:<secret>:<old refresh token>:<login>:<password>".
+# made, as "<client_id>:<secret>:<old refresh token>:<login>:<password>:<portal-era refresh token>".
 #
 # PHP's built-in server ignores .htaccess, so the discovery rewrite is not
 # exercised here: index.php?route=... is.
@@ -44,6 +44,15 @@ sResource=$(printf '%s' "$sPrm" | json_field resource)
 sReg=$(curl -sS -w '\n%{http_code}' -X POST -H 'Content-Type: application/json' \
 	-d '{"client_name":"Smoke","redirect_uris":["https://evil.example/cb"]}' "$ENDPOINT?route=register")
 expect "a redirect URI off the allowlist is refused" "$sReg" 'invalid_redirect_uri'
+expect "the refusal names the URI, so an administrator can allow it" "$sReg" 'https://evil.example/cb'
+sReg=$(curl -sS -X POST -H 'Content-Type: application/json' \
+	-d '{"client_name":"ChatGPT","redirect_uris":["https://chatgpt.com/connector/oauth/smoke_123"]}' "$ENDPOINT?route=register")
+expect "ChatGPT's per-integration callback registers" "$sReg" '"client_id"'
+# Claude registers as a confidential client: it asks for a secret and must get one.
+sReg=$(curl -sS -X POST -H 'Content-Type: application/json' \
+	-d "{\"client_name\":\"Claude\",\"redirect_uris\":[\"$CALLBACK\"],\"token_endpoint_auth_method\":\"client_secret_post\"}" "$ENDPOINT?route=register")
+expect "a client asking for a secret gets one" "$sReg" '"client_secret":"'
+expect "and is registered with the method it asked for" "$sReg" '"token_endpoint_auth_method":"client_secret_post"'
 sReg=$(curl -sS -X POST -H 'Content-Type: application/json' \
 	-d "{\"client_name\":\"Smoke\",\"redirect_uris\":[\"$CALLBACK\"],\"token_endpoint_auth_method\":\"none\"}" "$ENDPOINT?route=register")
 sClient=$(printf '%s' "$sReg" | json_field client_id)
@@ -146,7 +155,7 @@ if [ -z "$ITOP_TOKEN" ] || [ "${ITOP_TOKEN#*:}" = "$ITOP_TOKEN" ]; then
 	rm -f "$JAR"
 	fail "module-smoke.php passed no confidential client"
 fi
-IFS=: read -r sCcId sCcSecret sOldRefresh sNoRestLogin sNoRestPassword <<< "$ITOP_TOKEN"
+IFS=: read -r sCcId sCcSecret sOldRefresh sNoRestLogin sNoRestPassword sPortalRefresh <<< "$ITOP_TOKEN"
 CC_CALLBACK='https://smoke.example/callback'
 
 # Signed in already, through the jar: the authorize request lands on the consent page.
@@ -193,6 +202,10 @@ expect "after Disconnect its current refresh token is invalid_grant" "$sOut" '"e
 # A connection made 200 days ago, its stored end still ahead: today's max_grant_days ends it.
 sOut=$(token -u "$sCcId:$sCcSecret" -d grant_type=refresh_token --data-urlencode "refresh_token=$sOldRefresh")
 expect "a lower max_grant_days ends a connection made before it" "$sOut" '"error":"invalid_grant","error_description":"the connection has expired"'
+
+# Allowed as portal-only, the account now has the console: consent again.
+sOut=$(token -u "$sCcId:$sCcSecret" -d grant_type=refresh_token --data-urlencode "refresh_token=$sPortalRefresh")
+expect "a connection made portal-only ends once the account has the console" "$sOut" 'the account was given the console'
 
 # CORS: nothing for an origin nobody listed, which by default is every origin.
 sOut=$(curl -sS -D - -o /dev/null -H 'Origin: https://evil.example' "$ENDPOINT?route=openid-configuration")

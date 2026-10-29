@@ -21,6 +21,15 @@ use utils;
 final class Config
 {
 	public const MODULE = 'altioo-oauth-server';
+	/** Also declared in datamodel.altioo-oauth-server.xml, which says why each one is there. */
+	public const DEFAULT_REDIRECT_URIS = [
+		'https://claude.ai/api/mcp/auth_callback',
+		'https://claude.com/api/mcp/auth_callback',
+		'https://chatgpt.com/connector_platform_oauth_redirect',
+		'https://chatgpt.com/connector/oauth/*',
+		'https://www.cursor.com/agents/mcp/oauth/callback',
+		'https://vscode.dev/redirect',
+	];
 
 	public static function Issuer(): string
 	{
@@ -37,7 +46,7 @@ final class Config
 	 */
 	public static function RedirectUris(): array
 	{
-		return self::StringList(self::Get('redirect_uris', ['https://claude.ai/api/mcp/auth_callback']));
+		return self::StringList(self::Get('redirect_uris', self::DEFAULT_REDIRECT_URIS));
 	}
 
 	public static function AllowLoopback(): bool

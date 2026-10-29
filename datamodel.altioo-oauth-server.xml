@@ -380,6 +380,27 @@
           <max_size>1024</max_size>
         </field>
         <!--
+          Whether the account could use the console when consent was given. A grant
+          made by a portal-only account ends when the account gains the console:
+          its consent covered a portal connection, not a console one. Empty for a
+          grant made before this was recorded, which is never ended for it.
+        -->
+        <field id="console_access" xsi:type="AttributeEnum">
+          <sql>console_access</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <values>
+            <value id="yes">
+              <code>yes</code>
+              <rank>10</rank>
+            </value>
+            <value id="no">
+              <code>no</code>
+              <rank>20</rank>
+            </value>
+          </values>
+        </field>
+        <!--
           An integer rather than an external key on purpose. A person deletes
           this token under My Account, with no right on this class; an external
           key would put this grant in that deletion's plan. The next refresh
@@ -442,6 +463,10 @@
             <value id="reuse">
               <code>reuse</code>
               <rank>50</rank>
+            </value>
+            <value id="access_changed">
+              <code>access_changed</code>
+              <rank>52</rank>
             </value>
             <value id="withdrawn">
               <code>withdrawn</code>
@@ -572,6 +597,9 @@
             </item>
             <item id="end_reason">
               <rank>60</rank>
+            </item>
+            <item id="console_access">
+              <rank>65</rank>
             </item>
             <item id="personal_token_id">
               <rank>70</rank>
@@ -717,6 +745,27 @@
           <validation_pattern/>
           <max_size>1024</max_size>
         </field>
+        <!--
+          Whether the account could use the console when consent was given. A grant
+          made by a portal-only account ends when the account gains the console:
+          its consent covered a portal connection, not a console one. Empty for a
+          grant made before this was recorded, which is never ended for it.
+        -->
+        <field id="console_access" xsi:type="AttributeEnum">
+          <sql>console_access</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <values>
+            <value id="yes">
+              <code>yes</code>
+              <rank>10</rank>
+            </value>
+            <value id="no">
+              <code>no</code>
+              <rank>20</rank>
+            </value>
+          </values>
+        </field>
         <field id="expiration_date" xsi:type="AttributeDateTime">
           <sql>expiration_date</sql>
           <default_value/>
@@ -804,11 +853,21 @@
   <module_parameters>
     <parameters id="altioo-oauth-server" _delta="define">
       <!--
-        Redirect URIs a client may register, matched exactly. Claude's own is
-        the default; an instance that also serves another client adds it here.
+        Redirect URIs a client may register itself with, matched exactly; an
+        entry ending in "/*" matches one more path segment (RedirectUriPolicy).
+        The defaults are the published web callbacks of the main MCP clients:
+        Claude, ChatGPT (its stable callback, and the per-integration one it
+        falls back to), Cursor and VS Code on the web. Remove those this
+        instance does not serve: each one is a client anyone can register as.
+        Desktop and command-line clients listen on a local port: allow_loopback.
       -->
       <redirect_uris type="array">
         <item>https://claude.ai/api/mcp/auth_callback</item>
+        <item>https://claude.com/api/mcp/auth_callback</item>
+        <item>https://chatgpt.com/connector_platform_oauth_redirect</item>
+        <item>https://chatgpt.com/connector/oauth/*</item>
+        <item>https://www.cursor.com/agents/mcp/oauth/callback</item>
+        <item>https://vscode.dev/redirect</item>
       </redirect_uris>
       <!-- Also accept http://localhost and http://127.0.0.1 on any port and path (RFC 8252), for local clients. -->
       <allow_loopback type="bool">false</allow_loopback>

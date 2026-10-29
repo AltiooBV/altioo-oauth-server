@@ -44,4 +44,22 @@ final class GradesTest extends TestCase
 		$aOffered = ['MCP-read', 'MCP-write', 'MCP-advisory', 'MCP-toolset-objects'];
 		$this->assertSame(['MCP-advisory', 'MCP-toolset-objects'], Grades::Uncovered(Grades::Usable(self::GRADES, $aOffered), $aOffered));
 	}
+
+	public function testAClientAskingForTheWidestStillLeavesTheNarrowerGrades(): void
+	{
+		$aAdminOffer = ['MCP', 'MCP-read', 'MCP-write', 'MCP-delete', 'MCP-advisory'];
+		$aOffered = Grades::WithNarrower(self::GRADES, ['MCP'], $aAdminOffer);
+		$this->assertSame([0, 1, 2, 3], array_keys(Grades::Usable(self::GRADES, $aOffered)));
+	}
+
+	public function testAClientAskingForLessIsNotOfferedMore(): void
+	{
+		$this->assertSame(['MCP-read'], Grades::WithNarrower(self::GRADES, ['MCP-read'], ['MCP', 'MCP-read', 'MCP-write']));
+	}
+
+	public function testAGradeTheAdministratorDoesNotOfferIsNotAddedBack(): void
+	{
+		$aOffered = Grades::WithNarrower(self::GRADES, ['MCP'], ['MCP', 'MCP-read']);
+		$this->assertSame([0, 3], array_keys(Grades::Usable(self::GRADES, $aOffered)));
+	}
 }

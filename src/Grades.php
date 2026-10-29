@@ -30,6 +30,33 @@ final class Grades
 	}
 
 	/**
+	 * The offer with every grade narrower than the widest one it allows added back. A client
+	 * that asks only for the widest scopes (Claude asks for all it is told of) would otherwise
+	 * leave the person nothing narrower to choose, when granting less than asked is always
+	 * allowed. Grades are listed narrowest first; only scopes the administrator offers are added.
+	 *
+	 * @param list<array{label: string, scopes: list<string>}> $aGrades
+	 * @param list<string> $aOffered the offer for this request
+	 * @param list<string> $aAdminOffer what the resource offers to any request
+	 * @return list<string>
+	 */
+	public static function WithNarrower(array $aGrades, array $aOffered, array $aAdminOffer): array
+	{
+		$aUsable = self::Usable($aGrades, $aOffered);
+		if ($aUsable === []) {
+			return $aOffered;
+		}
+		$iWidest = max(array_keys($aUsable));
+		foreach ($aGrades as $iIndex => $aGrade) {
+			if ($iIndex < $iWidest && array_diff($aGrade['scopes'], $aAdminOffer) === []) {
+				$aOffered = array_merge($aOffered, $aGrade['scopes']);
+			}
+		}
+
+		return array_values(array_unique($aOffered));
+	}
+
+	/**
 	 * The first grade whose scopes are all preselected, or else the first grade.
 	 *
 	 * @param array<int, array{label: string, scopes: list<string>}> $aUsable not empty

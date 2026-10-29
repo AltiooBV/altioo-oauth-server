@@ -35,11 +35,25 @@ they discover the server from the resource, register themselves, and use the aut
 flow with PKCE. Nothing is typed by hand, but a client registers only if it sends people back
 to a redirect URI on the `redirect_uris` allowlist.
 
-| Client | Status |
-|---|---|
-| Claude (web, Desktop, mobile) | The target. Its redirect URI is the default allowlist. Not yet tested end to end. |
-| Claude Code, and other command-line clients | They listen on a local port: set `allow_loopback`. |
-| Other assistants with MCP connectors | Should connect if they follow the specification. Add their redirect URI to `redirect_uris`. Not tested. |
+The default allowlist holds the published web callbacks of the main MCP clients. None of them
+has been tested end to end here yet, and vendors change these: check the client's own
+documentation, or the refusal in iTop's log (*Troubleshooting*), which names the URI a client
+asked for.
+
+| Client | Redirect URI | In the default allowlist | Where it comes from |
+|---|---|---|---|
+| ChatGPT | `https://chatgpt.com/connector_platform_oauth_redirect`, or per integration `https://chatgpt.com/connector/oauth/{callback_id}` | Both (the second as `.../connector/oauth/*`) | [OpenAI, Authentication](https://developers.openai.com/plugins/build/auth): the first when the server sends `iss`, which this one does |
+| Claude (web, Desktop, mobile) | `https://claude.ai/api/mcp/auth_callback`, `https://claude.com/api/mcp/auth_callback` | Both | [Zuora's list of MCP client callbacks](https://docs.zuora.com/en/zuora-ai/zuora-mcp-server/zuora-mcp-server/configure-zuora-remote-mcp-server/redirect-uris-by-mcp-client); the first was this module's target from the start |
+| VS Code | Web `https://vscode.dev/redirect`; desktop `http://127.0.0.1:33418/` | Web; desktop with `allow_loopback` | [Zuora's list of MCP client callbacks](https://docs.zuora.com/en/zuora-ai/zuora-mcp-server/zuora-mcp-server/configure-zuora-remote-mcp-server/redirect-uris-by-mcp-client) |
+| Gemini CLI | `http://localhost:7777/oauth/callback` | With `allow_loopback` | Same list; the port can be configured |
+| Cursor | Web and agents `https://www.cursor.com/agents/mcp/oauth/callback`; desktop `http://localhost:8787/callback` | Web; desktop with `allow_loopback` | Same list |
+| Claude Code | `http://localhost:{port}/callback` | With `allow_loopback`; it also needs the site-root discovery rules below | Same list; the root lookup seen on itop.altioo.com, 2026-10-29 |
+| Grok | Not published. One unconfirmed report names `console.x.ai/connectors-oauth-exchange-code/` | No | Find it in the log, then add it |
+| Mistral Le Chat | Not published | No | Find it in the log, then add it |
+
+Remove the entries this instance does not serve: each one is a callback anyone using that
+product can register a client with, and the consent page, which names the host, is then what
+stands between a phishing link and a person's iTop.
 
 **Clients configured by hand ("classic" OAuth).** Many agent platforms let you set up an OAuth
 integration yourself: Grok, ChatGPT, DeepSeek, Gemini, Mistral and others, in no particular
@@ -88,6 +102,17 @@ supported yet.
 A connection ends after `grant_idle_days` without use, or `max_grant_days` after it was made,
 whichever comes first. The person then signs in again.
 
+## Which accounts can connect
+
+Any account that can sign in to iTop, console or portal, provided authent-token lets it own
+personal tokens (`personal_tokens_allowed_profiles`) and the resource accepts it: for altioo-mcp,
+a profile in its `mcp_allowed_profiles`, and for a portal account its portal mode; for
+REST/JSON, the *REST Services User* profile. Otherwise the consent page is replaced by a page
+saying so.
+
+A portal account has no *My Account* page, so it cannot see or end its own connections: an
+administrator revokes them for it.
+
 ## Ending a connection
 
 - **The person**, under *My Account*, *Personal Tokens*. The *Connected applications* section
@@ -126,7 +151,7 @@ A lower `max_grant_days` takes effect at each connection's next refresh, at most
 | HTTPS | Required. OAuth over plain HTTP hands every code and token to the network. |
 | Network | The client's servers must reach iTop. For Claude, that is Anthropic's addresses. |
 | Cron | iTop's `webservices/cron.php` running, for the hourly clean-up. Without it, a connection past its lifetime keeps its token until its client next tries to refresh. |
-| Web server | Apache with `AllowOverride` for the module's `.htaccess`, or IIS with the URL Rewrite module for its `web.config` |
+| Web server | Apache with `AllowOverride All` and `mod_rewrite`, for the module's `.htaccess`; or IIS with the URL Rewrite module, for its `web.config` |
 | REST/JSON | A person reaches `rest.php` with a token only with `allow_rest_services_via_tokens` set, or the *REST Services User* profile |
 
 ## Installation
@@ -138,7 +163,9 @@ A lower `max_grant_days` takes effect at each connection's next refresh, at most
    changes nothing: iTop runs the compiled copy. Setup adds three tables.
 4. Check that `https://<itop>/env-production/altioo-oauth-server/.well-known/openid-configuration`
    answers with JSON. This is the issuer's discovery document.
-5. For altioo-mcp: set its `mcp_protected_resource_metadata` setting to
+5. For altioo-mcp: nothing to do from its 1.2.0, which finds this server when it is installed
+   and advertises it in the challenge of its 401 (and stops when it is removed). With an older
+   altioo-mcp, set its `mcp_protected_resource_metadata` setting to
    `https://<itop>/env-production/altioo-oauth-server/index.php?route=protected-resource&for=mcp`.
    That is how Claude finds this server from the MCP endpoint.
 
@@ -147,19 +174,42 @@ Then, in Claude, add a custom connector with the altioo-mcp endpoint URL, exactl
 it (through `extensions/`, or without `index.php`) is not the resource this server knows, and
 the iTop page says "Unknown resource".
 
+### What the module's `.htaccess` and `web.config` allow
+
+Only `index.php` and the two discovery paths under `.well-known/`, and only the methods GET,
+HEAD, POST and OPTIONS. Everything else in the module's directory is refused: `src/`,
+`vendor/`, `templates/`, `tests/`, the dictionaries, `composer.json` and the two files
+themselves. On Apache this was checked on 2.4.69 with a vhost that also denies every dotfile,
+as hardened setups do. On IIS, the discovery paths have no extension, so `web.config` lets
+extensionless requests through under `.well-known/` only, where nothing exists on disk; this
+has not been tried on an IIS server yet.
+
 ### Discovery at the site root
 
-Some clients look for the server's metadata at the site root, with the issuer path appended
-(`/.well-known/oauth-authorization-server/env-production/altioo-oauth-server`). A module cannot
-answer there. If a client needs it, add a rewrite to the site configuration:
+The module serves its metadata inside the issuer's path
+(`<issuer>/.well-known/openid-configuration`), which is where Claude looks. Others follow
+RFC 8414 and RFC 9728 to the letter and look at the site root, with the path appended: Claude
+Code does, and gets a 404 there without these rules. A module cannot answer at the site root, so
+add them to the site configuration (on Apache, in the vhost, with `mod_rewrite`):
 
 ```apache
-RewriteRule ^/?\.well-known/(oauth-authorization-server|openid-configuration)/env-production/altioo-oauth-server$ /env-production/altioo-oauth-server/index.php?route=$1 [L,QSA]
+RewriteEngine On
+# The authorization server's metadata, RFC 8414 and its OpenID twin.
+RewriteRule ^/?\.well-known/(oauth-authorization-server|openid-configuration)/env-production/altioo-oauth-server$ /env-production/altioo-oauth-server/index.php?route=$1 [PT,QSA,L]
+# altioo-mcp's protected resource metadata, RFC 9728, for clients that do not read it from the
+# endpoint's 401.
+RewriteRule ^/?\.well-known/oauth-protected-resource/env-production/altioo-mcp/index\.php$ /env-production/altioo-oauth-server/index.php?route=protected-resource&for=mcp [PT,QSA,L]
 ```
+
+`PT` hands the result back to Apache as a request for that file, so PHP and the module's
+`.htaccess` handle it like any other.
 
 ```nginx
 location ~ ^/\.well-known/(oauth-authorization-server|openid-configuration)/env-production/altioo-oauth-server$ {
 	rewrite ^ /env-production/altioo-oauth-server/index.php?route=$1 last;
+}
+location = /.well-known/oauth-protected-resource/env-production/altioo-mcp/index.php {
+	rewrite ^ /env-production/altioo-oauth-server/index.php?route=protected-resource&for=mcp last;
 }
 ```
 
@@ -173,7 +223,7 @@ In the configuration file, under `$MyModuleSettings['altioo-oauth-server']`.
 
 | Setting | Default | Effect |
 |---|---|---|
-| `redirect_uris` | `['https://claude.ai/api/mcp/auth_callback']` | The only redirect URIs a client may register, matched exactly |
+| `redirect_uris` | The web callbacks in the table under *Which clients can connect* | The only redirect URIs a client may register itself with, matched exactly. An entry ending in `/*` matches one more path segment, for a client with a callback per integration. |
 | `allow_loopback` | `false` | Also accept `http://localhost`, `127.0.0.1` and `[::1]` on any port, for local clients |
 | `registration_rate_limit` | `300` | Registrations accepted from one IP address per hour. Every person connecting Claude registers from Anthropic's addresses, so keep it well above the number of people who may connect in an hour. |
 | `registration_global_limit` | `1000` | Registrations accepted per hour from all addresses together |
@@ -257,6 +307,7 @@ logged. Raise the level for this channel alone with
 |---|---|
 | The client says the server cannot be found | The discovery document does not answer: `AllowOverride` is off, the URL Rewrite module is missing on IIS, or the client looks at the site root (see above). |
 | "Unknown application" on the iTop page | The client's redirect URI is not on `redirect_uris`, or its registration was deleted as unused. |
+| The client says it cannot register | Its callback is not on `redirect_uris`. The log line `Refused on route register: invalid_redirect_uri (this server does not allow the redirect URI ...)` names it: add it, exactly, if the host is the client's own. |
 | "Personal tokens not allowed" | The person's profiles are not in authent-token's `personal_tokens_allowed_profiles`. |
 | Connected, but every call fails | `token` is missing from `allowed_login_types`, or the resource refuses the person (altioo-mcp's profiles, `rest.php`'s REST Services User). |
 | The client asks to reconnect every day | `grant_idle_days` or `max_grant_days` is short, or the person or an administrator ended the connection. *OAuth connections* shows why it ended. |

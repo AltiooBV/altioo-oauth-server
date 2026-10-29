@@ -45,12 +45,20 @@ final class RegistrationController
 		$oPolicy = new RedirectUriPolicy(Config::RedirectUris(), Config::AllowLoopback());
 		foreach ($aUris as $sUri) {
 			if (!is_string($sUri) || !$oPolicy->IsAllowed($sUri)) {
-				throw new OAuthException('invalid_redirect_uri', 'this server does not allow that redirect URI');
+				// Named in the refusal, and so in the log: it is how an administrator learns the
+				// callback of a client whose documentation does not give it.
+				$sShown = is_string($sUri) ? mb_substr(preg_replace('/[\x00-\x1F\x7F]/u', '', $sUri) ?? '', 0, 200) : '(not a string)';
+				throw new OAuthException('invalid_redirect_uri', 'this server does not allow the redirect URI '.$sShown);
 			}
 		}
-		if (($aBody['token_endpoint_auth_method'] ?? 'none') !== 'none') {
-			throw new OAuthException('invalid_client_metadata', 'only public clients are registered: token_endpoint_auth_method must be none');
+		// Claude registers as a confidential client (observed on itop.altioo.com, 2026-10-29), so
+		// one that asks gets a secret, held here only as a one-way hash. PKCE stays required either
+		// way: the secret adds to it, it never replaces it for a client that registered itself.
+		$sAuthMethod = (string) ($aBody['token_endpoint_auth_method'] ?? 'none');
+		if (!in_array($sAuthMethod, ['none', 'client_secret_basic', 'client_secret_post'], true)) {
+			throw new OAuthException('invalid_client_metadata', 'token_endpoint_auth_method must be none, client_secret_basic or client_secret_post');
 		}
+		$sClientSecret = $sAuthMethod === 'none' ? null : Secret::NewSecret();
 		foreach ((array) ($aBody['grant_types'] ?? []) as $sGrantType) {
 			if (!in_array($sGrantType, ['authorization_code', 'refresh_token'], true)) {
 				throw new OAuthException('invalid_client_metadata', 'unsupported grant type');
@@ -70,22 +78,25 @@ final class RegistrationController
 			'client_name' => $sName,
 			'redirect_uris' => json_encode(array_values($aUris), JSON_UNESCAPED_SLASHES),
 			'source' => 'dcr',
-			'auth_method' => 'none',
+			'auth_method' => $sAuthMethod,
 			'pkce' => 'required',
 			'status' => 'active',
 			'registered_from_ip' => mb_substr($sIp, 0, 45),
 			'creation_date' => date('Y-m-d H:i:s', $iNow),
 		]);
 		PersonalTokens::Track('registration from '.$sIp);
+		if ($sClientSecret !== null) {
+			$oClient->Set('client_secret', $sClientSecret);
+		}
 		$oClient->AllowWrite();
 		$oClient->DBInsert();
 
-		Http::Json(201, [
+		Http::Json(201, ($sClientSecret === null ? [] : ['client_secret' => $sClientSecret, 'client_secret_expires_at' => 0]) + [
 			'client_id' => $sClientId,
 			'client_id_issued_at' => $iNow,
 			'client_name' => $sName,
 			'redirect_uris' => array_values($aUris),
-			'token_endpoint_auth_method' => 'none',
+			'token_endpoint_auth_method' => $sAuthMethod,
 			'grant_types' => ['authorization_code', 'refresh_token'],
 			'response_types' => ['code'],
 		]);

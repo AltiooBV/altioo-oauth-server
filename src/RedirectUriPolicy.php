@@ -9,8 +9,13 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\OAuthServer;
 
 /**
- * Which redirect URIs a client may register. Matching is exact, byte for byte: no prefix, no
- * wildcard, no normalisation, because each of those has been an open redirect somewhere.
+ * Which redirect URIs a client may register. Matching is exact, byte for byte, with no
+ * normalisation, because each loosening has been an open redirect somewhere.
+ *
+ * The one exception is an entry ending in "*", for a client that gives each integration its
+ * own callback under a fixed path (ChatGPT's https://chatgpt.com/connector/oauth/{id}). It
+ * matches exactly one more path segment of unreserved characters: no slash, query, fragment
+ * or dot-segment. The entry itself must be https, name a host and a path, and end with "/*".
  *
  * @since 0.1.0
  */
@@ -28,8 +33,27 @@ final class RedirectUriPolicy
 		if (in_array($sUri, $this->aAllowlist, true)) {
 			return true;
 		}
+		foreach ($this->aAllowlist as $sEntry) {
+			if (self::MatchesPrefixEntry($sEntry, $sUri)) {
+				return true;
+			}
+		}
 
 		return $this->bAllowLoopback && self::IsLoopback($sUri);
+	}
+
+	public static function MatchesPrefixEntry(string $sEntry, string $sUri): bool
+	{
+		if (preg_match('#^https://[A-Za-z0-9.-]+(/[A-Za-z0-9._~-]+)+/\*$#D', $sEntry) !== 1) {
+			return false;
+		}
+		$sPrefix = substr($sEntry, 0, -1);
+		if (!str_starts_with($sUri, $sPrefix)) {
+			return false;
+		}
+		$sSegment = substr($sUri, strlen($sPrefix));
+
+		return preg_match('/^[A-Za-z0-9_~-][A-Za-z0-9._~-]*$/D', $sSegment) === 1 && $sSegment !== '..';
 	}
 
 	/**

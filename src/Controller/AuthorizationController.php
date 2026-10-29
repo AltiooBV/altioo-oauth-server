@@ -17,6 +17,7 @@ use Altioo\iTop\Extension\OAuthServer\Pkce;
 use Altioo\iTop\Extension\OAuthServer\ProtectedResource;
 use Altioo\iTop\Extension\OAuthServer\RedirectUriList;
 use Altioo\iTop\Extension\OAuthServer\Secret;
+use Altioo\iTop\Extension\OAuthServer\Service\Accounts;
 use Altioo\iTop\Extension\OAuthServer\Service\PersonalTokens;
 use Combodo\iTop\Application\Helper\Session;
 use Dict;
@@ -60,17 +61,15 @@ final class AuthorizationController
 			throw new PageException('UI:AltiooOAuthServer:Page:RequestExpired');
 		}
 
-		// An ordinary console login: every login mode and MFA policy of the instance applies.
-		// No portal is requested: DoLogin(false, true) asks for the legacy portal and sends
-		// everyone else away to their own. Portal users get through only to be told, below,
-		// why they cannot connect.
+		// An ordinary iTop login: every login mode and MFA policy of the instance applies. No
+		// portal is requested, so a portal account signs in here as well as a console one:
+		// whether it may connect is the resource's to say (its required profiles, below), not
+		// this server's. altioo-mcp serves portal accounts in its portal mode; rest.php only
+		// with its REST Services User profile.
 		LoginWebPage::DoLoginEx(null, false, LoginWebPage::EXIT_PROMPT);
 		$oUser = UserRights::GetUserObject();
 		if (!$oUser instanceof User) {
 			throw new PageException('UI:AltiooOAuthServer:Page:RequestExpired');
-		}
-		if (UserRights::IsPortalUser()) {
-			throw new PageException('UI:AltiooOAuthServer:Page:PortalUser', 403);
 		}
 		if (!PersonalTokens::IsAllowedFor($oUser)) {
 			throw new PageException('UI:AltiooOAuthServer:Page:TokensNotAllowed', 403);
@@ -86,7 +85,7 @@ final class AuthorizationController
 		if (!$oResource->AllowsUser($oUser)) {
 			throw new PageException('UI:AltiooOAuthServer:Page:ResourceNotAllowed', 403);
 		}
-		$aOffered = $oResource->oScopes->Offered($aRequest['scope']);
+		$aOffered = Grades::WithNarrower($oResource->aGrades, $oResource->oScopes->Offered($aRequest['scope']), $oResource->oScopes->Offered([]));
 
 		// Not the request method: iTop's login form posts back to this same URL, so a POST is
 		// also what arrives right after a form login.
@@ -212,6 +211,7 @@ final class AuthorizationController
 			'code_challenge' => $aRequest['code_challenge'],
 			'resource' => $oResource->sKey,
 			'scope' => implode(' ', $aGranted),
+			'console_access' => Accounts::HasConsole($oUser) ? 'yes' : 'no',
 			'expiration_date' => date('Y-m-d H:i:s', time() + Config::CodeLifetime()),
 		]);
 		$oCode->Set('code_secret', $sSecret);

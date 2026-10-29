@@ -1,5 +1,6 @@
 # Serves index.php, and the two discovery documents clients look for inside
-# the issuer path, and nothing else in this directory.
+# the issuer path, and nothing else in this directory: not src/, vendor/,
+# templates/, tests/, the dictionaries, composer.json nor this file.
 #
 # The deny is inside a FilesMatch for the reason altioo-mcp's .htaccess gives
 # at length: the compiled env-<env>/ root grants .php in a FilesMatch, and a
@@ -7,9 +8,13 @@
 # under src/ and vendor/. Both sections are file context, so the grants must
 # come after the deny.
 #
-# The discovery names are granted as well as index.php because Apache decides
-# access on the requested path before the rewrite below runs. They name no
-# file, so the grant serves nothing but the rewrite.
+# The discovery paths are granted as well as index.php because Apache decides
+# access on the requested path before the rewrite below runs, and for
+# .well-known/openid-configuration, which exists nowhere on disk, the name it
+# checks is ".well-known": the first component that does not exist. Neither
+# name is a file here, so the grant serves nothing but the rewrite. Observed
+# on Apache 2.4.69: without ".well-known" in the list, both discovery URLs
+# were refused 403 by the deny above.
 #
 # Keep this in step with web.config, which does the same job on IIS.
 
@@ -18,7 +23,7 @@
 	<FilesMatch ".">
 		Require all denied
 	</FilesMatch>
-	<FilesMatch "^(index\.php|openid-configuration|oauth-authorization-server)$">
+	<FilesMatch "^(index\.php|\.well-known|openid-configuration|oauth-authorization-server)$">
 		Require all granted
 	</FilesMatch>
 </IfModule>
@@ -29,7 +34,7 @@
 		Deny from all
 		Satisfy All
 	</FilesMatch>
-	<FilesMatch "^(index\.php|openid-configuration|oauth-authorization-server)$">
+	<FilesMatch "^(index\.php|\.well-known|openid-configuration|oauth-authorization-server)$">
 		Order Allow,Deny
 		Allow from all
 	</FilesMatch>
@@ -40,8 +45,15 @@
 # too. The site-root forms need a rewrite outside this directory: see the README.
 <IfModule mod_rewrite.c>
 	RewriteEngine On
+	# Every endpoint is GET, POST, or the OPTIONS of a CORS preflight. Anything else
+	# (PUT, DELETE, TRACE...) is refused before PHP sees it.
+	RewriteCond %{REQUEST_METHOD} !^(GET|HEAD|POST|OPTIONS)$
+	RewriteRule ^ - [F]
 	RewriteRule ^\.well-known/(openid-configuration|oauth-authorization-server)$ index.php?route=$1 [L,QSA]
 </IfModule>
+
+# Without mod_rewrite the discovery documents are not served, but nothing else opens:
+# the deny above still holds, and index.php?route=... still answers.
 
 # Apache 2.2 and 2.4
 IndexIgnore *

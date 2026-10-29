@@ -106,7 +106,7 @@
         <entry id="UI:AltiooOAuthServer:Consent:SelfDeclared" _delta="force"><![CDATA[iTop cannot check that name: the application chose it. Check where you will be sent back instead.]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:ReturnTo" _delta="force"><![CDATA[When you answer, you will be sent back to:]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Resource" _delta="force"><![CDATA[It asks for access to %1$s.]]></entry>
-        <entry id="UI:AltiooOAuthServer:Consent:Permissions" _delta="force"><![CDATA[What it may do]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:Permissions" _delta="force"><![CDATA[The most it may do: your own rights in iTop still apply, and the application may be given less]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Forced" _delta="force"><![CDATA[Always included on this iTop: %1$s.]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Lifetime" _delta="force"><![CDATA[The connection lasts at most %1$d days, and ends sooner if it is unused for %2$d days.]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Allow" _delta="force"><![CDATA[Allow]]></entry>
@@ -120,8 +120,6 @@
         <entry id="UI:AltiooOAuthServer:Page:InvalidRequest+" _delta="force"><![CDATA[The application sent a request this iTop does not accept. It must use the authorization code flow with PKCE (S256).]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:UnknownResource" _delta="force"><![CDATA[Unknown resource]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:UnknownResource+" _delta="force"><![CDATA[The application asked for access to something this iTop does not give access to.]]></entry>
-        <entry id="UI:AltiooOAuthServer:Page:PortalUser" _delta="force"><![CDATA[Not available for portal accounts]]></entry>
-        <entry id="UI:AltiooOAuthServer:Page:PortalUser+" _delta="force"><![CDATA[Your account can use only the portal. Ask your iTop administrator if you need to connect an application.]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:TokensNotAllowed" _delta="force"><![CDATA[Personal tokens not allowed]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:TokensNotAllowed+" _delta="force"><![CDATA[Connecting an application gives it a personal token, and your profiles do not allow personal tokens on this iTop. Ask your iTop administrator.]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:NothingSelected" _delta="force"><![CDATA[Nothing selected]]></entry>
@@ -170,6 +168,20 @@
         <entry id="UI:AltiooOAuthServer:Consent:OnlyYours" _delta="force"><![CDATA[Allow only if you started this connection yourself, just now. If someone sent you this link, deny.]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:ResourceNotAllowed" _delta="force"><![CDATA[Not available for your account]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:ResourceNotAllowed+" _delta="force"><![CDATA[Your profiles do not give access to what this application asks for, so every call it made would be refused. Ask your iTop administrator.]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:console_access" _delta="force"><![CDATA[Console access at consent]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:console_access+" _delta="force"><![CDATA[Whether the account could use the console when it allowed the connection]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:console_access/Value:yes" _delta="force"><![CDATA[Yes]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:console_access/Value:yes+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:console_access/Value:no" _delta="force"><![CDATA[No, portal only]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:console_access/Value:no+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:access_changed" _delta="force"><![CDATA[Account gained console access]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:access_changed+" _delta="force"><![CDATA[Allowed as a portal account; a console connection needs consent again]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:console_access" _delta="force"><![CDATA[Console access at consent]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:console_access+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:console_access/Value:yes" _delta="force"><![CDATA[Yes]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:console_access/Value:yes+" _delta="force"><![CDATA[]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:console_access/Value:no" _delta="force"><![CDATA[No, portal only]]></entry>
+        <entry id="Class:AltiooOAuthCode/Attribute:console_access/Value:no+" _delta="force"><![CDATA[]]></entry>
       </entries>
     </dictionary>
   </dictionaries>
