@@ -44,7 +44,7 @@ asked for.
 |---|---|---|---|
 | ChatGPT | `https://chatgpt.com/connector_platform_oauth_redirect`, or per integration `https://chatgpt.com/connector/oauth/{callback_id}` | Both (the second as `.../connector/oauth/*`) | [OpenAI, Authentication](https://developers.openai.com/plugins/build/auth): the first when the server sends `iss`, which this one does |
 | Claude (web, Desktop, mobile) | `https://claude.ai/api/mcp/auth_callback`, `https://claude.com/api/mcp/auth_callback` | Both | [Zuora's list of MCP client callbacks](https://docs.zuora.com/en/zuora-ai/zuora-mcp-server/zuora-mcp-server/configure-zuora-remote-mcp-server/redirect-uris-by-mcp-client); the first was this module's target from the start |
-| VS Code | Web `https://vscode.dev/redirect`; desktop `http://127.0.0.1:33418/` | Web; desktop with `allow_loopback` | [Zuora's list of MCP client callbacks](https://docs.zuora.com/en/zuora-ai/zuora-mcp-server/zuora-mcp-server/configure-zuora-remote-mcp-server/redirect-uris-by-mcp-client) |
+| VS Code | Web `https://vscode.dev/redirect` (a forwarder — see below); desktop `http://127.0.0.1:33418/` | Web; desktop with `allow_loopback` | [Zuora's list of MCP client callbacks](https://docs.zuora.com/en/zuora-ai/zuora-mcp-server/zuora-mcp-server/configure-zuora-remote-mcp-server/redirect-uris-by-mcp-client) |
 | Gemini CLI | `http://localhost:7777/oauth/callback` | With `allow_loopback` | Same list; the port can be configured |
 | Cursor | Web and agents `https://www.cursor.com/agents/mcp/oauth/callback`; desktop `http://localhost:8787/callback` | Web; desktop with `allow_loopback` | Same list |
 | Claude Code | `http://localhost:{port}/callback` | With `allow_loopback`; it also needs the site-root discovery rules below | Same list; the root lookup seen on itop.altioo.com, 2026-10-29 |
@@ -54,6 +54,14 @@ asked for.
 Remove the entries this instance does not serve: each one is a callback anyone using that
 product can register a client with, and the consent page, which names the host, is then what
 stands between a phishing link and a person's iTop.
+
+One default entry needs more than that. `https://vscode.dev/redirect` is not a final callback:
+VS Code web lands the code on that page, which then forwards it to a target VS Code chose — a
+loopback port or a `vscode://` handler. So for this one entry the host the consent page shows,
+`vscode.dev`, is not where the code finally lands; vscode.dev's own allowlist is what decides
+that. Keep `https://vscode.dev/redirect` only while VS Code web actually connects here, and
+remove it otherwise — a forwarder on the allowlist is worth more to someone crafting a link than
+an ordinary callback is.
 
 **Clients configured by hand ("classic" OAuth).** Many agent platforms let you set up an OAuth
 integration yourself: Grok, ChatGPT, DeepSeek, Gemini, Mistral and others, in no particular

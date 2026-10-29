@@ -860,6 +860,12 @@
         falls back to), Cursor and VS Code on the web. Remove those this
         instance does not serve: each one is a client anyone can register as.
         Desktop and command-line clients listen on a local port: allow_loopback.
+
+        https://vscode.dev/redirect is a forwarder, not a final callback: VS
+        Code web lands the code there and that page sends it on to a target VS
+        Code chose (a loopback port, a vscode:// handler). So for this one
+        entry the host on the consent page, vscode.dev, is not where the code
+        ends up. Keep it only if VS Code web connects here; drop it otherwise.
       -->
       <redirect_uris type="array">
         <item>https://claude.ai/api/mcp/auth_callback</item>

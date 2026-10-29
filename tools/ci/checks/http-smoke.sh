@@ -59,6 +59,11 @@ sClient=$(printf '%s' "$sReg" | json_field client_id)
 [ -n "$sClient" ] || fail "registration returned no client_id: $sReg"
 echo "   ok  a client on the allowlist registers"
 
+# A second public client, to stand for another caller at the token endpoint below.
+sClient2=$(curl -sS -X POST -H 'Content-Type: application/json' \
+	-d "{\"client_name\":\"Other\",\"redirect_uris\":[\"$CALLBACK\"],\"token_endpoint_auth_method\":\"none\"}" "$ENDPOINT?route=register" | json_field client_id)
+[ -n "$sClient2" ] || fail "the second registration returned no client_id"
+
 sOut=$(token -d grant_type=authorization_code -d code=1.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -d "client_id=$sClient")
 expect "an unknown code is invalid_grant" "$sOut" '"error":"invalid_grant"'
 sOut=$(token -d grant_type=refresh_token -d refresh_token=garbage -d "client_id=$sClient")
@@ -109,13 +114,20 @@ expect "a wrong PKCE verifier is invalid_grant" "$sOut" '"error":"invalid_grant"
 sLoc=$(authorize)
 sBack=$(allow "$sLoc" "$(curl -sS -c "$JAR" -b "$JAR" "$sLoc")")
 sCode=$(printf '%s' "$sBack" | sed -n 's/.*[?&]code=\([^&]*\).*/\1/p')
+
+# A code belongs to the client it was issued for. Another client presenting it is refused,
+# and - refused before the code is claimed - must not burn it for its real client.
+sOut=$(token -d grant_type=authorization_code --data-urlencode "code=$sCode" -d "client_id=$sClient2" \
+	--data-urlencode "redirect_uri=$CALLBACK" --data-urlencode "code_verifier=$sVerifier" --data-urlencode "resource=$sResource")
+expect "a code presented by another client is invalid_grant" "$sOut" '"error":"invalid_grant"'
+
 sTok=$(curl -sS -d grant_type=authorization_code --data-urlencode "code=$sCode" -d "client_id=$sClient" \
 	--data-urlencode "redirect_uri=$CALLBACK" --data-urlencode "code_verifier=$sVerifier" --data-urlencode "resource=$sResource" \
 	"$ENDPOINT?route=token")
 sAccess1=$(printf '%s' "$sTok" | json_field access_token)
 sRefresh1=$(printf '%s' "$sTok" | json_field refresh_token)
 [ -n "$sAccess1" ] && [ -n "$sRefresh1" ] || fail "the code exchange issued no tokens: ${sTok:0:300}"
-echo "   ok  the code exchange issues an access and a refresh token"
+echo "   ok  the code exchange issues an access and a refresh token, even after another client tried it"
 expect "the minted token works on REST/JSON" "$(rest_get "$sAccess1")" '"code":0'
 
 sOut=$(token -d grant_type=authorization_code --data-urlencode "code=$sCode" -d "client_id=$sClient" \

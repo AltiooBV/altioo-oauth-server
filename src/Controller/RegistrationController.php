@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\OAuthServer\Controller;
 
+use Altioo\iTop\Extension\OAuthServer\ClientName;
 use Altioo\iTop\Extension\OAuthServer\Config;
 use Altioo\iTop\Extension\OAuthServer\Exception\OAuthException;
 use Altioo\iTop\Extension\OAuthServer\Http;
@@ -68,7 +69,7 @@ final class RegistrationController
 		$sIp = is_string($_SERVER['REMOTE_ADDR'] ?? null) ? $_SERVER['REMOTE_ADDR'] : '';
 		self::CheckRateLimit($sIp);
 
-		$sName = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string) ($aBody['client_name'] ?? '')) ?? '');
+		$sName = ClientName::Clean((string) ($aBody['client_name'] ?? ''));
 		$sName = mb_substr($sName === '' ? 'Unnamed application' : $sName, 0, 80);
 		$sClientId = Secret::NewClientId();
 		$iNow = time();

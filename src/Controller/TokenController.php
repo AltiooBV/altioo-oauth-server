@@ -77,7 +77,17 @@ final class TokenController
 	{
 		$aParts = Secret::Split(self::Posted('code'));
 		$oCode = $aParts === null ? null : MetaModel::GetObject(AltiooOAuthCode::class, $aParts[0], false, true);
-		if (!$oCode instanceof AltiooOAuthCode || !$oCode->Get('code_secret')->CheckPassword($aParts[1])) {
+		if (!$oCode instanceof AltiooOAuthCode) {
+			throw new OAuthException('invalid_grant', 'unknown code');
+		}
+		// Refuse a code that is not this client's before verifying its secret: CheckPassword is a
+		// bcrypt comparison, and an unauthenticated caller must not be able to spend one on a code
+		// it does not own. A non-owning caller gets the same answer as for a code that never
+		// existed, so this reveals nothing either.
+		if ((int) $oCode->Get('client_id') !== (int) $oClient->GetKey()) {
+			throw new OAuthException('invalid_grant', 'unknown code');
+		}
+		if (!$oCode->Get('code_secret')->CheckPassword($aParts[1])) {
 			throw new OAuthException('invalid_grant', 'unknown code');
 		}
 		// A code presented twice was intercepted, or replayed: end what its first use produced.

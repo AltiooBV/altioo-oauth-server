@@ -21,7 +21,12 @@ use utils;
 final class Config
 {
 	public const MODULE = 'altioo-oauth-server';
-	/** Also declared in datamodel.altioo-oauth-server.xml, which says why each one is there. */
+	/**
+	 * Also declared in datamodel.altioo-oauth-server.xml, which says why each one is there.
+	 * Note https://vscode.dev/redirect forwards the code on to a target VS Code picks, so it is
+	 * a redirector rather than a final callback: the datamodel comment and the README say when to
+	 * keep it.
+	 */
 	public const DEFAULT_REDIRECT_URIS = [
 		'https://claude.ai/api/mcp/auth_callback',
 		'https://claude.com/api/mcp/auth_callback',
