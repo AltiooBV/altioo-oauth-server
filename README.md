@@ -151,8 +151,8 @@ A lower `max_grant_days` takes effect at each connection's next refresh, at most
 
 | | |
 |---|---|
-| iTop and PHP | What [`.github/itop-support.json`](.github/itop-support.json) declares, which is what CI installs on |
-| iTop modules | `authent-token` 2.2.1 and `itop-portal-base` 3.2.1 or later, which ship with iTop. The second is what the portal tab under *My profile* is built on; iTop 3.2.0 does not have it. |
+| iTop and PHP | iTop 3.2.1 or later, within what [`.github/itop-support.json`](.github/itop-support.json) declares, which is what CI installs on. 3.2.0 lacks the hooks the portal tab under *My profile* is built on. |
+| iTop modules | `authent-token` 2.2.1 or later, which ships with iTop |
 | Login mode | `token` in `allowed_login_types`, as for any personal token |
 | HTTPS | Required. OAuth over plain HTTP hands every code and token to the network. |
 | Network | The client's servers must reach iTop. For Claude, that is Anthropic's addresses. |

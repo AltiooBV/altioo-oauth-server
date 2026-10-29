@@ -27,7 +27,7 @@ tested against claude.ai or any other real client.
   Code), with entries ending in `/*` for a callback per integration.
 - Ending a connection: *Disconnect* under My Account, or under *Connected applications* in the
   portal's *My profile* for an account that has only the portal; *Revoke* in the console; and an
-  hourly clean-up of connections past their lifetime, spent codes and unused clients. The portal
-  tab needs iTop 3.2.1 or later, which the module now requires.
+  hourly clean-up of connections past their lifetime, spent codes and unused clients.
+- Requires iTop 3.2.1 or later, the first release with the portal's *My profile* hooks.
 - `.htaccess` and `web.config` that serve only the entry point and the discovery paths, for
   GET, HEAD, POST and OPTIONS only.
