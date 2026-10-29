@@ -13,8 +13,7 @@ use Altioo\iTop\Extension\OAuthServer\Exception\OAuthException;
 use Altioo\iTop\Extension\OAuthServer\Http;
 use Altioo\iTop\Extension\OAuthServer\RedirectUriPolicy;
 use Altioo\iTop\Extension\OAuthServer\Secret;
-use CMDBObject;
-use Combodo\iTop\Core\CMDBChange\CMDBChangeOrigin;
+use Altioo\iTop\Extension\OAuthServer\Service\PersonalTokens;
 use DBObjectSearch;
 use DBObjectSet;
 use MetaModel;
@@ -77,8 +76,7 @@ final class RegistrationController
 			'registered_from_ip' => mb_substr($sIp, 0, 45),
 			'creation_date' => date('Y-m-d H:i:s', $iNow),
 		]);
-		CMDBObject::SetTrackInfo('OAuth: registration from '.mb_substr($sIp, 0, 45));
-		CMDBObject::SetTrackOrigin(CMDBChangeOrigin::CUSTOM_EXTENSION);
+		PersonalTokens::Track('registration from '.$sIp);
 		$oClient->AllowWrite();
 		$oClient->DBInsert();
 

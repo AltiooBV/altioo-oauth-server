@@ -92,7 +92,9 @@ final class PersonalTokens
 		if ($oToken === null) {
 			return;
 		}
-		if ($sClientName !== null) {
+		if ($sClientName === null) {
+			self::AsPerson();
+		} else {
 			self::Track($sClientName);
 		}
 		$oToken->AllowWrite();
@@ -123,10 +125,27 @@ final class PersonalTokens
 		return $oScope;
 	}
 
-	private static function Track(string $sClientName): void
+	/**
+	 * Records what follows as made by this module for the client. A fresh change is opened:
+	 * iTop keeps one current change per request, and one already opened would carry on under
+	 * whatever name it was opened with.
+	 */
+	public static function Track(string $sClientName): void
 	{
+		CMDBObject::SetCurrentChange(null);
 		CMDBObject::SetTrackInfo(mb_substr('OAuth: '.$sClientName, 0, 255));
 		CMDBObject::SetTrackOrigin(CMDBChangeOrigin::CUSTOM_EXTENSION);
+	}
+
+	/**
+	 * Records what follows as made by the signed-in person, whatever this request recorded as
+	 * made by this module before.
+	 */
+	public static function AsPerson(): void
+	{
+		CMDBObject::SetCurrentChange(null);
+		CMDBObject::SetTrackInfo(null);
+		CMDBObject::SetTrackOrigin(null);
 	}
 
 	private static function DateIn(int $iSeconds): string

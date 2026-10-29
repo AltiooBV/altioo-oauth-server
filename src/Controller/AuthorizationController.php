@@ -10,7 +10,9 @@ namespace Altioo\iTop\Extension\OAuthServer\Controller;
 
 use Altioo\iTop\Extension\OAuthServer\Config;
 use Altioo\iTop\Extension\OAuthServer\Exception\PageException;
+use Altioo\iTop\Extension\OAuthServer\Grades;
 use Altioo\iTop\Extension\OAuthServer\Http;
+use Altioo\iTop\Extension\OAuthServer\PendingRequests;
 use Altioo\iTop\Extension\OAuthServer\Pkce;
 use Altioo\iTop\Extension\OAuthServer\ProtectedResource;
 use Altioo\iTop\Extension\OAuthServer\RedirectUriList;
@@ -146,14 +148,8 @@ final class AuthorizationController
 	 */
 	private static function PrunePendingRequests(): void
 	{
-		$aPending = Session::Get(self::SESSION_KEY, []);
-		if (!is_array($aPending)) {
-			$aPending = [];
-		}
-		$aPending = array_filter($aPending, static fn($aRequest) => is_array($aRequest) && ($aRequest['expires'] ?? 0) >= time());
-		uasort($aPending, static fn(array $a, array $b) => $a['expires'] <=> $b['expires']);
-		$aPending = array_slice($aPending, -(self::MAX_PENDING_REQUESTS - 1), null, true);
-		Session::Set(self::SESSION_KEY, $aPending);
+		// One fewer than the cap: the request about to be added is the last one.
+		Session::Set(self::SESSION_KEY, PendingRequests::Prune(Session::Get(self::SESSION_KEY, []), time(), self::MAX_PENDING_REQUESTS - 1));
 	}
 
 	/**
@@ -198,7 +194,7 @@ final class AuthorizationController
 			Http::Redirect(self::WithQuery($aRequest['redirect_uri'], ['error' => 'access_denied'] + $aBack));
 		}
 		$aTicked = array_map('strval', (array) ($_POST['scopes'] ?? []));
-		$aGrades = self::UsableGrades($oResource, $aOffered);
+		$aGrades = Grades::Usable($oResource->aGrades, $aOffered);
 		$sGrade = utils::ReadPostedParam('grade', '', 'raw_data');
 		if (isset($aGrades[$sGrade])) {
 			$aTicked = array_merge($aTicked, $aGrades[$sGrade]['scopes']);
@@ -232,29 +228,20 @@ final class AuthorizationController
 	private static function ShowConsent(string $sRequestId, array $aRequest, AltiooOAuthClient $oClient, ProtectedResource $oResource, User $oUser, array $aOffered): never
 	{
 		$aPreselected = $oResource->oScopes->Preselected($aOffered);
-		$aGrades = self::UsableGrades($oResource, $aOffered);
+		$aGrades = Grades::Usable($oResource->aGrades, $aOffered);
 		$sScopes = '';
 		if ($aGrades !== []) {
-			// One radio per grade, the first one whose scopes are all preselected checked; the
-			// scopes no grade covers (a rehearsal mode, a toolset) stay checkboxes below.
-			$sChosen = (string) array_key_first($aGrades);
-			foreach ($aGrades as $sIndex => $aGrade) {
-				if (array_diff($aGrade['scopes'], $aPreselected) === []) {
-					$sChosen = (string) $sIndex;
-					break;
-				}
-			}
-			foreach ($aGrades as $sIndex => $aGrade) {
-				$sChecked = (string) $sIndex === $sChosen ? ' checked' : '';
-				$sScopes .= '<label><input type="radio" name="grade" value="'.Http::Escape((string) $sIndex).'"'.$sChecked.'> '
+			// One radio per grade; the scopes no grade covers (a rehearsal mode, a toolset) stay
+			// checkboxes below, unticked.
+			$iChosen = Grades::Chosen($aGrades, $aPreselected);
+			foreach ($aGrades as $iIndex => $aGrade) {
+				$sChecked = $iIndex === $iChosen ? ' checked' : '';
+				$sScopes .= '<label><input type="radio" name="grade" value="'.$iIndex.'"'.$sChecked.'> '
 					.Http::Escape(Dict::S($aGrade['label'])).'</label>';
 			}
-			$aCovered = array_merge(...array_column($aGrades, 'scopes'));
 			$aPreselected = [];
-		} else {
-			$aCovered = [];
 		}
-		$aExtras = array_values(array_diff($aOffered, $aCovered));
+		$aExtras = Grades::Uncovered($aGrades, $aOffered);
 		if ($aGrades !== [] && $aExtras !== []) {
 			$sScopes .= '<p class="note">'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Consent:Also')).'</p>';
 		}
@@ -289,17 +276,6 @@ final class AuthorizationController
 			.'<button type="submit" name="decision" value="deny">'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Consent:Deny')).'</button></p>'
 			.'</form>'
 			.'<p class="note">'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Consent:Disconnect')).'</p>');
-	}
-
-	/**
-	 * The resource's grades whose scopes the page may offer, keyed by their position.
-	 *
-	 * @param list<string> $aOffered
-	 * @return array<int, array{label: string, scopes: list<string>}>
-	 */
-	private static function UsableGrades(ProtectedResource $oResource, array $aOffered): array
-	{
-		return array_filter($oResource->aGrades, static fn(array $aGrade) => array_diff($aGrade['scopes'], $aOffered) === []);
 	}
 
 	public static function ScopeLabel(string $sScope): string

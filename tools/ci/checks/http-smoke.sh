@@ -7,8 +7,9 @@
 # flow - login, consent, code exchange, a REST call with the minted token,
 # refresh in place (ADR 0004), the refresh grace period - first as a public
 # client registered by itself, then as the confidential client
-# checks/module-smoke.php created, passed in ITOP_TOKEN as "<client_id>:<secret>":
-# no PKCE, no resource parameter, the secret in a Basic header.
+# checks/module-smoke.php created: no PKCE, no resource parameter, the secret in a
+# Basic header. ITOP_TOKEN carries that client and the other fixtures module-smoke.php
+# made, as "<client_id>:<secret>:<old refresh token>:<login>:<password>".
 #
 # PHP's built-in server ignores .htaccess, so the discovery rewrite is not
 # exercised here: index.php?route=... is.
@@ -145,8 +146,7 @@ if [ -z "$ITOP_TOKEN" ] || [ "${ITOP_TOKEN#*:}" = "$ITOP_TOKEN" ]; then
 	rm -f "$JAR"
 	fail "module-smoke.php passed no confidential client"
 fi
-sCcId=${ITOP_TOKEN%%:*}
-sCcSecret=${ITOP_TOKEN#*:}
+IFS=: read -r sCcId sCcSecret sOldRefresh sNoRestLogin sNoRestPassword <<< "$ITOP_TOKEN"
 CC_CALLBACK='https://smoke.example/callback'
 
 # Signed in already, through the jar: the authorize request lands on the consent page.
@@ -189,5 +189,28 @@ curl -sS -o /dev/null -c "$JAR" -b "$JAR" --data-urlencode "transaction_id=$sTra
 expect "after Disconnect the connection's token is refused" "$(rest_get "$sAccess3")" '"code":1'
 sOut=$(token -d grant_type=refresh_token --data-urlencode "refresh_token=$sRefresh3" -d "client_id=$sClient")
 expect "after Disconnect its current refresh token is invalid_grant" "$sOut" '"error":"invalid_grant"'
+
+# A connection made 200 days ago, its stored end still ahead: today's max_grant_days ends it.
+sOut=$(token -u "$sCcId:$sCcSecret" -d grant_type=refresh_token --data-urlencode "refresh_token=$sOldRefresh")
+expect "a lower max_grant_days ends a connection made before it" "$sOut" '"error":"invalid_grant","error_description":"the connection has expired"'
+
+# CORS: nothing for an origin nobody listed, which by default is every origin.
+sOut=$(curl -sS -D - -o /dev/null -H 'Origin: https://evil.example' "$ENDPOINT?route=openid-configuration")
+case "$sOut" in *[Aa]ccess-[Cc]ontrol-*) rm -f "$JAR"; fail "a CORS header was sent for an unlisted origin" ;; esac
+echo "   ok  no CORS header for an origin nobody listed"
+
+# An account the REST/JSON resource would refuse is refused before consent, with a reason.
+NOREST_JAR=$(mktemp)
+sLoc=$(curl -sS -o /dev/null -w '%{redirect_url}' -c "$NOREST_JAR" -b "$NOREST_JAR" -G "$ENDPOINT" \
+	--data-urlencode route=authorize --data-urlencode response_type=code \
+	--data-urlencode "client_id=$sClient" --data-urlencode "redirect_uri=$CALLBACK" \
+	--data-urlencode "code_challenge=$sChallenge" --data-urlencode code_challenge_method=S256 \
+	--data-urlencode "resource=$sResource")
+curl -sS -o /dev/null -c "$NOREST_JAR" -b "$NOREST_JAR" "$sLoc"
+sOut=$(curl -sS -w '\n%{http_code}' -c "$NOREST_JAR" -b "$NOREST_JAR" --data-urlencode loginop=login \
+	--data-urlencode "auth_user=$sNoRestLogin" --data-urlencode "auth_pwd=$sNoRestPassword" "$sLoc")
+rm -f "$NOREST_JAR"
+expect "an account the resource would refuse is told so before consent" "$sOut" 'Not available for your account'
+expect "and the page is a 403" "$sOut" '403'
 
 rm -f "$JAR"

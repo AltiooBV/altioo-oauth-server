@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Altioo\iTop\Extension\OAuthServer\Controller;
 
 use Altioo\iTop\Extension\OAuthServer\Config;
+use Altioo\iTop\Extension\OAuthServer\CorsPolicy;
 use Altioo\iTop\Extension\OAuthServer\Exception\OAuthException;
 use Altioo\iTop\Extension\OAuthServer\Exception\PageException;
 use Altioo\iTop\Extension\OAuthServer\Http;
@@ -69,22 +70,15 @@ final class Router
 		}
 	}
 
-	/**
-	 * Only for an origin the administrator listed, and never "*": the token response is a
-	 * credential, and a page on another origin has no business reading it unless allowed.
-	 */
 	private static function Cors(): void
 	{
 		$sOrigin = is_string($_SERVER['HTTP_ORIGIN'] ?? null) ? $_SERVER['HTTP_ORIGIN'] : '';
-		if ($sOrigin === '' || !in_array($sOrigin, Config::AllowedOrigins(), true)) {
-			return;
+		$sMethod = is_string($_SERVER['REQUEST_METHOD'] ?? null) ? $_SERVER['REQUEST_METHOD'] : '';
+		$aHeaders = CorsPolicy::Headers($sOrigin, Config::AllowedOrigins(), $sMethod);
+		foreach ($aHeaders as $sHeader) {
+			header($sHeader);
 		}
-		header('Access-Control-Allow-Origin: '.$sOrigin);
-		header('Vary: Origin');
-		if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
-			header('Access-Control-Allow-Methods: GET, POST');
-			header('Access-Control-Allow-Headers: Authorization, Content-Type');
-			header('Access-Control-Max-Age: 600');
+		if ($aHeaders !== [] && CorsPolicy::IsPreflight($sMethod)) {
 			http_response_code(204);
 			exit;
 		}

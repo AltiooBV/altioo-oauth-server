@@ -8,7 +8,8 @@
  * setting read with a default nobody chose, a resource left out because its scope family came
  * out empty, the clean-up process cron would never find. No token is minted for the HTTP
  * smoke: the OAuth flow mints its own, which is what it checks. What is passed on instead is
- * a confidential client's credentials, at the end of this file.
+ * a confidential client's credentials and the fixtures at the end of this file, as
+ * "<client_id>:<secret>:<old connection's refresh token>:<login>:<password>".
  *
  * @copyright   Copyright (C) 2026 Altioo
  * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
@@ -78,7 +79,6 @@ $oConfidential->Set('client_secret', $sSmokeSecret);
 $oConfidential->AllowWrite();
 $oConfidential->DBInsert();
 check('a client created by hand gets a generated client ID', preg_match('/^[a-f0-9]{32}$/D', (string) $oConfidential->Get('client_id')) === 1);
-$sHttpSmokeToken = $oConfidential->Get('client_id').':'.$sSmokeSecret;
 
 // rest.php takes a token only from a holder of "REST Services User" (or with
 // allow_rest_services_via_tokens on): the HTTP smoke checks the minted tokens there, as the
@@ -124,6 +124,20 @@ $fnConnection = static function (array $aValues) use ($oConfidential, $oAdminUse
 	return [$oGrant, (int) $oToken->GetKey()];
 };
 
+// Who the history names for a token's deletion: the change that recorded it.
+$fnDeletedBy = static function (int $iToken): ?string {
+	$oSearch = DBObjectSearch::FromOQL("SELECT CMDBChangeOpDelete WHERE objclass = 'PersonalToken' AND objkey = :key");
+	$oSearch->AllowAllData();
+	$oOp = (new DBObjectSet($oSearch, [], ['key' => $iToken]))->Fetch();
+	$oChange = $oOp === null ? null : MetaModel::GetObject('CMDBChange', $oOp->Get('change'), false, true);
+
+	return $oChange === null ? null : (string) $oChange->Get('userinfo');
+};
+
+// Revoke is an administrator's action in the console: signed in, as they would be. The
+// connection's token was created just before, as this module, in the same process, which is
+// what used to leave the module's name on the administrator's deletion.
+UserRights::Login($sAdmin);
 [$oGrant, $iToken] = $fnConnection([]);
 $oGrant->ApplyStimulus('ev_revoke');
 $oGrant->AllowWrite();
@@ -131,6 +145,8 @@ $oGrant->DBUpdate();
 $oGrant->Reload();
 check('Revoke ends the connection', $oGrant->Get('status') === 'ended' && $oGrant->Get('end_reason') === 'revoked');
 check('Revoke deletes its personal token', MetaModel::GetObject('PersonalToken', $iToken, false, true) === null);
+$sRevokedBy = $fnDeletedBy($iToken);
+check('the history names the administrator for a Revoke, not the client', $sRevokedBy !== null && $sRevokedBy !== '' && !str_starts_with($sRevokedBy, 'OAuth:'));
 
 [$oExpired, $iExpiredToken] = $fnConnection(['expiration_date' => date('Y-m-d H:i:s', time() - 60)]);
 [$oIdle, $iIdleToken] = $fnConnection(['last_refresh_date' => date('Y-m-d H:i:s', time() - 400 * 86400)]);
@@ -141,5 +157,53 @@ foreach ([[$oExpired, $iExpiredToken, 'expired'], [$oIdle, $iIdleToken, 'idle']]
 	check("the clean-up ends a connection past its lifetime ($sReason)", $oEnded->Get('status') === 'ended' && $oEnded->Get('end_reason') === $sReason);
 	check("and deletes its token ($sReason)", MetaModel::GetObject('PersonalToken', $iEndedToken, false, true) === null);
 }
+check('the history names the client for what the clean-up ended', $fnDeletedBy($iExpiredToken) === 'OAuth: Smoke confidential client');
 $oLive->Reload();
 check('the clean-up leaves a live connection alone', $oLive->Get('status') === 'active' && MetaModel::GetObject('PersonalToken', $iLiveToken, false, true) !== null);
+
+// The person deleted the connection's token under My Account: Connected applications must not
+// still list the connection as active.
+[$oOrphan, $iOrphanToken] = $fnConnection([]);
+$oOrphanToken = MetaModel::GetObject('PersonalToken', $iOrphanToken);
+$oOrphanToken->AllowWrite();
+$oOrphanToken->DBDelete();
+$aListed = array_map(static fn($oListed) => (int) $oListed->GetKey(), Altioo\iTop\Extension\OAuthServer\Service\Grants::ActiveFor((int) $oAdminUser->GetKey()));
+$oOrphan->Reload();
+check('Connected applications leaves out a connection whose token was deleted', !in_array((int) $oOrphan->GetKey(), $aListed, true));
+check('and ends it', $oOrphan->Get('status') === 'ended' && $oOrphan->Get('end_reason') === 'disconnected');
+
+// For the HTTP smoke, beside the confidential client:
+// - a connection made 200 days ago whose stored end is still ahead: max_grant_days (90) must
+//   end it at its next refresh all the same;
+// - an account that may own personal tokens but lacks the profile rest.php requires: authorize
+//   must refuse it before consent.
+$sOldSecret = Altioo\iTop\Extension\OAuthServer\Secret::NewSecret();
+[$oOld] = $fnConnection([
+	'creation_date' => date('Y-m-d H:i:s', time() - 200 * 86400),
+	'expiration_date' => date('Y-m-d H:i:s', time() + 86400),
+]);
+$oOld->Set('refresh_secret', $sOldSecret);
+$oOld->AllowWrite();
+$oOld->DBUpdate();
+
+$sNoRestLogin = 'smoke-norest-'.bin2hex(random_bytes(4));
+$sNoRestPassword = 'Aa1!'.bin2hex(random_bytes(12));
+$oNoRest = MetaModel::NewObject('UserLocal', ['login' => $sNoRestLogin, 'language' => 'EN US', 'expiration' => 'never_expire']);
+$oNoRest->Set('password', $sNoRestPassword);
+$oProfiles = $oNoRest->Get('profile_list');
+$oProfiles->AddItem(MetaModel::NewObject('URP_UserProfile', [
+	'profileid' => MetaModel::GetObjectByColumn('URP_Profiles', 'name', 'Administrator')->GetKey(),
+	'reason' => 'altioo-oauth-server HTTP smoke',
+]));
+$oNoRest->Set('profile_list', $oProfiles);
+$oNoRest->AllowWrite();
+$oNoRest->DBInsert();
+check('the account without REST Services User is refused by the REST/JSON resource', !Altioo\iTop\Extension\OAuthServer\Config::Resources()['rest']->AllowsUser($oNoRest));
+
+$sHttpSmokeToken = implode(':', [
+	$oConfidential->Get('client_id'),
+	$sSmokeSecret,
+	Altioo\iTop\Extension\OAuthServer\Secret::Join((int) $oOld->GetKey(), $sOldSecret),
+	$sNoRestLogin,
+	$sNoRestPassword,
+]);
