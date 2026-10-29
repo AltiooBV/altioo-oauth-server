@@ -64,9 +64,9 @@ final class Config
 		return max(1, (int) self::Get('registration_rate_limit', 300));
 	}
 
-	public static function RegistrationGlobalLimit(): int
+	public static function UnusedRegistrationLimit(): int
 	{
-		return max(1, (int) self::Get('registration_global_limit', 1000));
+		return max(1, (int) self::Get('unused_registration_limit', 1000));
 	}
 
 	/**

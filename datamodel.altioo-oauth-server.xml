@@ -900,8 +900,13 @@
         every person who connects Claude registers from Anthropic's addresses.
       -->
       <registration_rate_limit type="int">300</registration_rate_limit>
-      <!-- Registrations accepted per hour from all addresses together. -->
-      <registration_global_limit type="int">1000</registration_global_limit>
+      <!--
+        Registrations kept that have not completed a connection yet, from all
+        addresses together. Past it a new one is still accepted, and the oldest
+        unused one nobody has consented to is deleted to make room: refusing
+        instead would let a flood lock everyone out.
+      -->
+      <unused_registration_limit type="int">1000</unused_registration_limit>
       <!--
         Origins allowed to read the metadata, registration and token responses
         from a browser, for browser-based clients such as the MCP Inspector.

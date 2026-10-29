@@ -15,6 +15,7 @@ use Altioo\iTop\Extension\OAuthServer\Http;
 use Altioo\iTop\Extension\OAuthServer\RedirectUriPolicy;
 use Altioo\iTop\Extension\OAuthServer\Secret;
 use Altioo\iTop\Extension\OAuthServer\Service\PersonalTokens;
+use Altioo\iTop\Extension\OAuthServer\Service\Registrations;
 use DBObjectSearch;
 use DBObjectSet;
 use MetaModel;
@@ -86,6 +87,7 @@ final class RegistrationController
 			'creation_date' => date('Y-m-d H:i:s', $iNow),
 		]);
 		PersonalTokens::Track('registration from '.$sIp);
+		Registrations::MakeRoom(Config::UnusedRegistrationLimit(), $sIp);
 		if ($sClientSecret !== null) {
 			$oClient->Set('client_secret', $sClientSecret);
 		}
@@ -104,26 +106,17 @@ final class RegistrationController
 	}
 
 	/**
-	 * Per address, and for all addresses together: an attacker on IPv6 has as many addresses
-	 * as they like, and every person connecting Claude shares Anthropic's few.
+	 * Per address only. A limit for all addresses together is not refused here but made room
+	 * for (Registrations::MakeRoom): refusing it would let anyone with a few addresses, which
+	 * IPv6 hands out freely, stop everyone else from connecting.
 	 */
 	private static function CheckRateLimit(string $sIp): void
 	{
-		$sSince = date('Y-m-d H:i:s', time() - 3600);
-		if (self::CountSince('SELECT AltiooOAuthClient WHERE registered_from_ip = :ip AND creation_date > :since', ['ip' => $sIp, 'since' => $sSince]) >= Config::RegistrationRateLimit()
-			|| self::CountSince("SELECT AltiooOAuthClient WHERE source = 'dcr' AND creation_date > :since", ['since' => $sSince]) >= Config::RegistrationGlobalLimit()) {
-			throw new OAuthException('invalid_request', 'too many registrations; try again later', 429);
-		}
-	}
-
-	/**
-	 * @param array<string, string> $aParams
-	 */
-	private static function CountSince(string $sOql, array $aParams): int
-	{
-		$oSearch = DBObjectSearch::FromOQL($sOql);
+		$oSearch = DBObjectSearch::FromOQL('SELECT AltiooOAuthClient WHERE registered_from_ip = :ip AND creation_date > :since');
 		$oSearch->AllowAllData();
-
-		return (new DBObjectSet($oSearch, [], $aParams))->Count();
+		$iCount = (new DBObjectSet($oSearch, [], ['ip' => $sIp, 'since' => date('Y-m-d H:i:s', time() - 3600)]))->Count();
+		if ($iCount >= Config::RegistrationRateLimit()) {
+			throw new OAuthException('invalid_request', 'too many registrations from this address; try again later', 429);
+		}
 	}
 }

@@ -35,7 +35,7 @@ $aDefaults = [
 	'redirect_uris' => Config::DEFAULT_REDIRECT_URIS,
 	'allow_loopback' => false,
 	'registration_rate_limit' => 300,
-	'registration_global_limit' => 1000,
+	'unused_registration_limit' => 1000,
 	'allowed_origins' => [],
 	'code_lifetime' => 60,
 	'access_token_lifetime' => 3600,
@@ -251,6 +251,48 @@ try {
 check('an account with a connection can still be deleted', $bGoneDeleted);
 check('and its connection and token go with it', MetaModel::GetObject('AltiooOAuthGrant', $iGoneGrant, false, true) === null
 	&& MetaModel::GetObject('PersonalToken', $iGoneToken, false, true) === null);
+
+// Past the unused registration limit, a new registration makes room rather than being refused:
+// the oldest unused ones go, except one a person has already consented to (it holds a code).
+$fnUnused = static function (int $iAgeHours): AltiooOAuthClient {
+	$oClient = MetaModel::NewObject('AltiooOAuthClient', [
+		'client_name' => 'Smoke unused registration',
+		'redirect_uris' => json_encode(['https://claude.ai/api/mcp/auth_callback'], JSON_UNESCAPED_SLASHES),
+		'source' => 'dcr',
+		'auth_method' => 'none',
+		'pkce' => 'required',
+		'status' => 'active',
+		'creation_date' => date('Y-m-d H:i:s', time() - $iAgeHours * 3600),
+	]);
+	$oClient->AllowWrite();
+	$oClient->DBInsert();
+
+	return $oClient;
+};
+$oUnusedSearch = DBObjectSearch::FromOQL("SELECT AltiooOAuthClient WHERE source = 'dcr' AND ISNULL(last_used_date)");
+$oUnusedSearch->AllowAllData();
+$iUnusedBefore = (new DBObjectSet($oUnusedSearch))->Count();
+$oConsented = $fnUnused(23);
+$oCode = MetaModel::NewObject('AltiooOAuthCode', [
+	'client_id' => $oConsented->GetKey(),
+	'user_id' => $oAdminUser->GetKey(),
+	'redirect_uri' => 'https://claude.ai/api/mcp/auth_callback',
+	'code_challenge' => str_repeat('a', 43),
+	'resource' => 'rest',
+	'scope' => 'REST/JSON',
+	'expiration_date' => date('Y-m-d H:i:s', time() + 60),
+]);
+$oCode->Set('code_secret', Altioo\iTop\Extension\OAuthServer\Secret::NewSecret());
+$oCode->AllowWrite();
+$oCode->DBInsert();
+$aUnused = [$fnUnused(22), $fnUnused(21), $fnUnused(20)];
+// Room for one more with two fewer: the two oldest go, but not the older one with a code.
+$iMadeRoom = Altioo\iTop\Extension\OAuthServer\Service\Registrations::MakeRoom($iUnusedBefore + 4 - 1, '127.0.0.1');
+$fnExists = static fn(AltiooOAuthClient $oClient): bool => MetaModel::GetObject('AltiooOAuthClient', $oClient->GetKey(), false, true) !== null;
+check('past the unused registration limit, the oldest unused registrations make room', $iMadeRoom === 2 && !$fnExists($aUnused[0]) && !$fnExists($aUnused[1]));
+check('a registration a person consented to is kept', $fnExists($oConsented));
+check('and the newer ones too', $fnExists($aUnused[2]));
+check('below the limit nothing goes', Altioo\iTop\Extension\OAuthServer\Service\Registrations::MakeRoom($iUnusedBefore + 100, '127.0.0.1') === 0);
 
 // A client that registered itself with a callback the allowlist has since dropped: authorize
 // must refuse it, whatever its own list says. Stored as registration stores it.
