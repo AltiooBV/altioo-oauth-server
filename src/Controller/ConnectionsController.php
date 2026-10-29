@@ -12,15 +12,14 @@ use Altioo\iTop\Extension\OAuthServer\Exception\PageException;
 use Altioo\iTop\Extension\OAuthServer\Http;
 use Altioo\iTop\Extension\OAuthServer\Service\Grants;
 use LoginWebPage;
-use MetaModel;
-use AltiooOAuthGrant;
 use UserRights;
 use utils;
 
 /**
  * A person withdraws their consent from My Account, Personal Tokens, Connected applications
  * (src/Hook/MyAccountConnections.php). Only the person who made the connection can end it
- * here; an administrator uses Revoke on the connection in the console.
+ * here; an administrator uses Revoke on the connection in the console. The portal's My profile
+ * posts to its own page instead (src/Hook/PortalConnections.php).
  *
  * @since 0.1.0
  */
@@ -35,12 +34,7 @@ final class ConnectionsController
 		if (!utils::IsTransactionValid(utils::ReadPostedParam('transaction_id', '', 'transaction_id'))) {
 			throw new PageException('UI:AltiooOAuthServer:Page:RequestExpired');
 		}
-		$oGrant = MetaModel::GetObject(AltiooOAuthGrant::class, (int) utils::ReadPostedParam('grant_id', 0, 'integer'), false, true);
-		if ($oGrant instanceof AltiooOAuthGrant
-			&& (int) $oGrant->Get('user_id') === (int) UserRights::GetUserId()
-			&& $oGrant->Get('status') === 'active') {
-			Grants::End($oGrant, 'withdrawn', true, false);
-		}
+		Grants::Withdraw((int) utils::ReadPostedParam('grant_id', 0, 'integer'), (int) UserRights::GetUserId());
 
 		Http::Redirect(utils::GetAbsoluteUrlModulePage('combodo-my-account', 'index.php'));
 	}

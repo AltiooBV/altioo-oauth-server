@@ -48,6 +48,25 @@ final class Grants
 	}
 
 	/**
+	 * A person ends one of their own connections, from My Account or from the portal's My
+	 * profile. Someone else's connection, or one already ended, is left as it is.
+	 *
+	 * @return AltiooOAuthGrant|null the connection ended, or null when nothing was
+	 */
+	public static function Withdraw(int $iGrantId, int $iUserId): ?AltiooOAuthGrant
+	{
+		$oGrant = MetaModel::GetObject(AltiooOAuthGrant::class, $iGrantId, false, true);
+		if (!$oGrant instanceof AltiooOAuthGrant
+			|| (int) $oGrant->Get('user_id') !== $iUserId
+			|| $oGrant->Get('status') !== 'active') {
+			return null;
+		}
+		self::End($oGrant, 'withdrawn', true, false);
+
+		return $oGrant;
+	}
+
+	/**
 	 * A grant whose token was deleted is ended here rather than listed: the person who deleted
 	 * it would otherwise still see it as connected until the client's next refresh.
 	 *
