@@ -17,8 +17,11 @@
 
 use Altioo\iTop\Extension\OAuthServer\Config;
 use Altioo\iTop\Extension\OAuthServer\Hook\MyAccountConnections;
+use Altioo\iTop\Extension\OAuthServer\Hook\PortalConnections;
 use Altioo\iTop\Extension\OAuthServer\Service\CleanUpProcess;
 use Combodo\iTop\MyAccount\Hook\iMyAccountTabContentExtension;
+use Combodo\iTop\Portal\Hook\iUserProfileTabContentExtension;
+use Combodo\iTop\Portal\Hook\iUserProfileTabExtension;
 use Combodo\iTop\Service\InterfaceDiscovery\InterfaceDiscovery;
 
 check('the module autoloader is registered', class_exists(Config::class));
@@ -62,6 +65,10 @@ check('My Account finds the Connected applications section', in_array(MyAccountC
 check('the section is on authent-token\'s Personal Tokens tab', class_exists('Combodo\\iTop\\AuthentToken\\Hook\\MyAccountTabExtension')
 	&& (new Combodo\iTop\AuthentToken\Hook\MyAccountTabExtension())->GetTabCode() === (new MyAccountConnections())->GetTabCode());
 check('the My Account template is in the compiled module', is_file((new MyAccountConnections())->GetTemplatePath().'/oauthconnections.html.twig'));
+// The portal's My profile renders an extension only on a tab of its own, so both are needed.
+check('My profile finds the Connected applications tab', in_array(PortalConnections::class, InterfaceDiscovery::GetInstance()->FindItopClasses(iUserProfileTabExtension::class), true));
+check('My profile finds the tab\'s content', in_array(PortalConnections::class, InterfaceDiscovery::GetInstance()->FindItopClasses(iUserProfileTabContentExtension::class), true));
+check('the portal template is in the compiled module', is_file(APPROOT.'env-'.utils::GetCurrentEnvironment().'/altioo-oauth-server/templates/oauthconnections.portal.html.twig'));
 
 // A confidential client, created the way an administrator creates one in the console, for the
 // HTTP smoke's classic-OAuth half: no PKCE, no resource parameter, a secret in a Basic header.

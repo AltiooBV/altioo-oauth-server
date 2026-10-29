@@ -131,7 +131,7 @@
         <entry id="Class:AltiooOAuthGrant/Attribute:end_date" _delta="force"><![CDATA[Terminée le]]></entry>
         <entry id="Class:AltiooOAuthGrant/Attribute:end_date+" _delta="force"><![CDATA[]]></entry>
         <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:withdrawn" _delta="force"><![CDATA[Déconnectée par l'utilisateur]]></entry>
-        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:withdrawn+" _delta="force"><![CDATA[Terminée depuis Mon compte, Applications connectées]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:withdrawn+" _delta="force"><![CDATA[Terminée depuis Applications connectées, dans Mon compte ou dans Mon profil du portail]]></entry>
         <entry id="Class:AltiooOAuthGrant/Stimulus:ev_revoke" _delta="force"><![CDATA[Révoquer]]></entry>
         <entry id="Class:AltiooOAuthGrant/Stimulus:ev_revoke+" _delta="force"><![CDATA[Terminer cette connexion maintenant et supprimer son jeton personnel]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:Title" _delta="force"><![CDATA[Applications connectées]]></entry>
@@ -142,6 +142,8 @@
         <entry id="UI:AltiooOAuthServer:MyAccount:Since" _delta="force"><![CDATA[Connectée le]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:LastUsed" _delta="force"><![CDATA[Dernier renouvellement]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:Disconnect" _delta="force"><![CDATA[Déconnecter]]></entry>
+        <entry id="UI:AltiooOAuthServer:Portal:Disconnected" _delta="force"><![CDATA[%1$s est déconnectée.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Portal:Expired" _delta="force"><![CDATA[Cette page a expiré. Rouvrez Applications connectées et réessayez.]]></entry>
         <entry id="Class:AltiooOAuthClient/Attribute:auth_method" _delta="force"><![CDATA[Authentification]]></entry>
         <entry id="Class:AltiooOAuthClient/Attribute:auth_method+" _delta="force"><![CDATA[Comment le client prouve son identité auprès du point d'accès des jetons]]></entry>
         <entry id="Class:AltiooOAuthClient/Attribute:auth_method/Value:none" _delta="force"><![CDATA[Aucune (client public)]]></entry>

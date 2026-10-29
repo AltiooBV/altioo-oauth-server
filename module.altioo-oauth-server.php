@@ -23,6 +23,10 @@ SetupWebPage::AddModule(
 			// extension.xml cannot state an iTop floor; a mandatory core module carrying the
 			// branch can. No operator means ">=".
 			'itop-structure/3.2.0',
+			// The portal's My profile tab hooks (src/Hook/PortalConnections.php) exist from
+			// 3.2.1. On 3.2.0, iTop's class discovery would load a class naming a missing
+			// interface, a fatal error on every page that discovers hooks.
+			'itop-portal-base/3.2.1',
 			'authent-token/2.2.1',
 		),
 		'mandatory' => false,

@@ -131,7 +131,7 @@
         <entry id="Class:AltiooOAuthGrant/Attribute:end_date" _delta="force"><![CDATA[Ended]]></entry>
         <entry id="Class:AltiooOAuthGrant/Attribute:end_date+" _delta="force"><![CDATA[]]></entry>
         <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:withdrawn" _delta="force"><![CDATA[Disconnected by the user]]></entry>
-        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:withdrawn+" _delta="force"><![CDATA[Ended from My Account, Connected applications]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:withdrawn+" _delta="force"><![CDATA[Ended from Connected applications, under My Account or the portal's My profile]]></entry>
         <entry id="Class:AltiooOAuthGrant/Stimulus:ev_revoke" _delta="force"><![CDATA[Revoke]]></entry>
         <entry id="Class:AltiooOAuthGrant/Stimulus:ev_revoke+" _delta="force"><![CDATA[End this connection now and delete its personal token]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:Title" _delta="force"><![CDATA[Connected applications]]></entry>
@@ -142,6 +142,8 @@
         <entry id="UI:AltiooOAuthServer:MyAccount:Since" _delta="force"><![CDATA[Connected]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:LastUsed" _delta="force"><![CDATA[Last renewed]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:Disconnect" _delta="force"><![CDATA[Disconnect]]></entry>
+        <entry id="UI:AltiooOAuthServer:Portal:Disconnected" _delta="force"><![CDATA[%1$s is disconnected.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Portal:Expired" _delta="force"><![CDATA[This page has expired. Open Connected applications again and retry.]]></entry>
         <entry id="Class:AltiooOAuthClient/Attribute:auth_method" _delta="force"><![CDATA[Authentication]]></entry>
         <entry id="Class:AltiooOAuthClient/Attribute:auth_method+" _delta="force"><![CDATA[How the client proves who it is at the token endpoint]]></entry>
         <entry id="Class:AltiooOAuthClient/Attribute:auth_method/Value:none" _delta="force"><![CDATA[None (public client)]]></entry>
