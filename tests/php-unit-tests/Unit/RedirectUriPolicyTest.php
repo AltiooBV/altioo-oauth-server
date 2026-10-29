@@ -93,6 +93,30 @@ final class RedirectUriPolicyTest extends TestCase
 	}
 
 	/**
+	 * @dataProvider forClient
+	 */
+	public function testAuthorizeHoldsASelfRegisteredClientToTodaysAllowlist(string $sUri, array $aClientUris, bool $bSelfRegistered, bool $bLoopback, bool $bAllowed): void
+	{
+		$this->assertSame($bAllowed, (new RedirectUriPolicy([self::CLAUDE], $bLoopback))->AllowsForClient($sUri, $aClientUris, $bSelfRegistered));
+	}
+
+	public static function forClient(): array
+	{
+		$sDropped = 'https://vscode.dev/redirect';
+		$sLocal = 'http://127.0.0.1:33418/callback';
+
+		return [
+			'self-registered, still allowed' => [self::CLAUDE, [self::CLAUDE], true, false, true],
+			'self-registered, dropped from the allowlist since' => [$sDropped, [self::CLAUDE, $sDropped], true, false, false],
+			'self-registered, loopback turned off since' => [$sLocal, [$sLocal], true, false, false],
+			'self-registered, loopback still on' => [$sLocal, [$sLocal], true, true, true],
+			'allowed, but not one of the client\'s own' => [self::CLAUDE, [$sDropped], true, false, false],
+			'created by an administrator, off the allowlist' => [$sDropped, [$sDropped], false, false, true],
+			'created by an administrator, not one of its own' => [self::CLAUDE, [$sDropped], false, false, false],
+		];
+	}
+
+	/**
 	 * @dataProvider unsafeEntries
 	 */
 	public function testAStarEntryThatIsTooWideMatchesNothing(string $sEntry, string $sUri): void

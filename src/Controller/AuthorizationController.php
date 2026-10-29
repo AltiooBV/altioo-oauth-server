@@ -16,6 +16,7 @@ use Altioo\iTop\Extension\OAuthServer\PendingRequests;
 use Altioo\iTop\Extension\OAuthServer\Pkce;
 use Altioo\iTop\Extension\OAuthServer\ProtectedResource;
 use Altioo\iTop\Extension\OAuthServer\RedirectUriList;
+use Altioo\iTop\Extension\OAuthServer\RedirectUriPolicy;
 use Altioo\iTop\Extension\OAuthServer\Secret;
 use Altioo\iTop\Extension\OAuthServer\Service\Accounts;
 use Altioo\iTop\Extension\OAuthServer\Service\PersonalTokens;
@@ -110,7 +111,8 @@ final class AuthorizationController
 	{
 		$sRedirectUri = utils::ReadParam('redirect_uri', '', false, 'raw_data');
 		$oClient = self::FindClient(utils::ReadParam('client_id', '', false, 'raw_data'));
-		if ($oClient === null || !in_array($sRedirectUri, self::RedirectUris($oClient), true)) {
+		$oPolicy = new RedirectUriPolicy(Config::RedirectUris(), Config::AllowLoopback());
+		if ($oClient === null || !$oPolicy->AllowsForClient($sRedirectUri, self::RedirectUris($oClient), $oClient->Get('source') === 'dcr')) {
 			throw new PageException('UI:AltiooOAuthServer:Page:UnknownClient');
 		}
 		$sChallenge = utils::ReadParam('code_challenge', '', false, 'raw_data');

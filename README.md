@@ -53,7 +53,10 @@ asked for.
 
 Remove the entries this instance does not serve: each one is a callback anyone using that
 product can register a client with, and the consent page, which names the host, is then what
-stands between a phishing link and a person's iTop.
+stands between a phishing link and a person's iTop. Removing an entry also stops the clients
+that registered with it: authorize refuses them from then on. Connections they already made
+keep refreshing, since a refresh sends nobody anywhere; revoke them under *OAuth connections*
+if the callback has to go at once.
 
 One default entry needs more than that. `https://vscode.dev/redirect` is not a final callback:
 VS Code web lands the code on that page, which then forwards it to a target VS Code chose — a
@@ -229,8 +232,8 @@ In the configuration file, under `$MyModuleSettings['altioo-oauth-server']`.
 
 | Setting | Default | Effect |
 |---|---|---|
-| `redirect_uris` | The web callbacks in the table under *Which clients can connect* | The only redirect URIs a client may register itself with, matched exactly. An entry ending in `/*` matches one more path segment, for a client with a callback per integration. |
-| `allow_loopback` | `false` | Also accept `http://localhost`, `127.0.0.1` and `[::1]` on any port, for local clients |
+| `redirect_uris` | The web callbacks in the table under *Which clients can connect* | The only redirect URIs a client may register itself with, matched exactly. An entry ending in `/*` matches one more path segment, for a client with a callback per integration. Checked again at every authorize, so removing an entry also refuses the clients that registered with it. |
+| `allow_loopback` | `false` | Also accept `http://localhost`, `127.0.0.1` and `[::1]` on any port, for local clients. Turning it off refuses the local clients already registered too. |
 | `registration_rate_limit` | `300` | Registrations accepted from one IP address per hour. Every person connecting Claude registers from Anthropic's addresses, so keep it well above the number of people who may connect in an hour. |
 | `registration_global_limit` | `1000` | Registrations accepted per hour from all addresses together |
 | `allowed_origins` | empty | Origins allowed to read the metadata, registration and token responses from a browser, for browser-based clients such as the MCP Inspector. Empty sends no CORS header, which is what Claude needs. |

@@ -9,7 +9,7 @@
 # client registered by itself, then as the confidential client
 # checks/module-smoke.php created: no PKCE, no resource parameter, the secret in a
 # Basic header. ITOP_TOKEN carries that client and the other fixtures module-smoke.php
-# made, as "<client_id>:<secret>:<old refresh token>:<login>:<password>:<portal-era refresh token>".
+# made, as "<client_id>:<secret>:<old refresh token>:<login>:<password>:<portal-era refresh token>:<withdrawn client_id>".
 #
 # PHP's built-in server ignores .htaccess, so the discovery rewrite is not
 # exercised here: index.php?route=... is.
@@ -167,8 +167,17 @@ if [ -z "$ITOP_TOKEN" ] || [ "${ITOP_TOKEN#*:}" = "$ITOP_TOKEN" ]; then
 	rm -f "$JAR"
 	fail "module-smoke.php passed no confidential client"
 fi
-IFS=: read -r sCcId sCcSecret sOldRefresh sNoRestLogin sNoRestPassword sPortalRefresh <<< "$ITOP_TOKEN"
+IFS=: read -r sCcId sCcSecret sOldRefresh sNoRestLogin sNoRestPassword sPortalRefresh sWithdrawnClient <<< "$ITOP_TOKEN"
 CC_CALLBACK='https://smoke.example/callback'
+
+# A client that registered itself with a callback since dropped from the allowlist: refused on a
+# page, as an unknown client is, though the callback is still on its own list.
+sOut=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' -c "$JAR" -b "$JAR" -G "$ENDPOINT" \
+	--data-urlencode route=authorize --data-urlencode response_type=code \
+	--data-urlencode "client_id=$sWithdrawnClient" --data-urlencode redirect_uri=https://withdrawn.example/callback \
+	--data-urlencode "code_challenge=$sChallenge" --data-urlencode code_challenge_method=S256)
+expect "authorize refuses a callback the allowlist dropped since registration" "$sOut" '400 '
+[ "${sOut#400 }" = "" ] || { rm -f "$JAR"; fail "authorize redirected a withdrawn callback to: ${sOut#400 }"; }
 
 # Signed in already, through the jar: the authorize request lands on the consent page.
 sLoc=$(curl -sS -o /dev/null -w '%{redirect_url}' -c "$JAR" -b "$JAR" -G "$ENDPOINT" \

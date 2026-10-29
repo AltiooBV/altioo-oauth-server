@@ -42,6 +42,20 @@ final class RedirectUriPolicy
 		return $this->bAllowLoopback && self::IsLoopback($sUri);
 	}
 
+	/**
+	 * Whether authorize may send a person back to $sUri for a client: one of the client's own
+	 * redirect URIs and, for a client that registered itself, one the allowlist still allows.
+	 * The allowlist is applied again here, not only at registration, so that an administrator
+	 * who withdraws an entry, or turns allow_loopback off, withdraws it from the clients already
+	 * registered with it. A client an administrator created is its own allowlist.
+	 *
+	 * @param list<string> $aClientUris
+	 */
+	public function AllowsForClient(string $sUri, array $aClientUris, bool $bSelfRegistered): bool
+	{
+		return in_array($sUri, $aClientUris, true) && (!$bSelfRegistered || $this->IsAllowed($sUri));
+	}
+
 	public static function MatchesPrefixEntry(string $sEntry, string $sUri): bool
 	{
 		if (preg_match('#^https://[A-Za-z0-9.-]+(/[A-Za-z0-9._~-]+)+/\*$#D', $sEntry) !== 1) {

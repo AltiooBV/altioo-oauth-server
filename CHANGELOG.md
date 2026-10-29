@@ -24,7 +24,9 @@ tested against claude.ai or any other real client.
 - Two resources: altioo-mcp and iTop's REST/JSON API, each with the profiles it requires,
   checked before consent, and the grades the consent page offers.
 - A default allowlist of the main MCP clients' web callbacks (Claude, ChatGPT, Cursor, VS
-  Code), with entries ending in `/*` for a callback per integration.
+  Code), with entries ending in `/*` for a callback per integration. It is checked at
+  registration and again at every authorize, so removing an entry also refuses the clients that
+  registered with it.
 - Ending a connection: *Disconnect* under My Account, or under *Connected applications* in the
   portal's *My profile* for an account that has only the portal; *Revoke* in the console; and an
   hourly clean-up of connections past their lifetime, spent codes and unused clients.

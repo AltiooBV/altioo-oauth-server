@@ -9,7 +9,7 @@
  * out empty, the clean-up process cron would never find. No token is minted for the HTTP
  * smoke: the OAuth flow mints its own, which is what it checks. What is passed on instead is
  * a confidential client's credentials and the fixtures at the end of this file, as
- * "<client_id>:<secret>:<old connection's refresh token>:<login>:<password>:<portal-era refresh token>".
+ * "<client_id>:<secret>:<old connection's refresh token>:<login>:<password>:<portal-era refresh token>:<withdrawn client_id>".
  *
  * @copyright   Copyright (C) 2026 Altioo
  * @license     https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0-or-later
@@ -216,6 +216,20 @@ $oPortalGrant->AllowWrite();
 $oPortalGrant->DBUpdate();
 check('the smoke administrator has the console', Altioo\iTop\Extension\OAuthServer\Service\Accounts::HasConsole($oAdminUser));
 
+// A client that registered itself with a callback the allowlist has since dropped: authorize
+// must refuse it, whatever its own list says. Stored as registration stores it.
+$oWithdrawn = MetaModel::NewObject('AltiooOAuthClient', [
+	'client_name' => 'Smoke withdrawn callback',
+	'redirect_uris' => json_encode(['https://withdrawn.example/callback'], JSON_UNESCAPED_SLASHES),
+	'source' => 'dcr',
+	'auth_method' => 'none',
+	'pkce' => 'required',
+	'status' => 'active',
+]);
+$oWithdrawn->AllowWrite();
+$oWithdrawn->DBInsert();
+check('the withdrawn callback is off the allowlist', !in_array('https://withdrawn.example/callback', Config::RedirectUris(), true));
+
 $sHttpSmokeToken = implode(':', [
 	$oConfidential->Get('client_id'),
 	$sSmokeSecret,
@@ -223,4 +237,5 @@ $sHttpSmokeToken = implode(':', [
 	$sNoRestLogin,
 	$sNoRestPassword,
 	Altioo\iTop\Extension\OAuthServer\Secret::Join((int) $oPortalGrant->GetKey(), $sPortalSecret),
+	$oWithdrawn->Get('client_id'),
 ]);
