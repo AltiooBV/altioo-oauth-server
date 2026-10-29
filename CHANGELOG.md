@@ -18,7 +18,7 @@ tested against claude.ai or any other real client.
   `authorization_code` and `refresh_token` grants with PKCE S256.
 - Access tokens are iTop `PersonalToken` objects, one per connection, renewed in place on
   every refresh (ADR 0004). Refresh tokens rotate, with a short grace period; reuse ends the
-  connection.
+  connection, and of two refreshes with one token at the same moment only one rotates it.
 - Clients created by an administrator, which may be confidential (`client_secret_basic`,
   `client_secret_post`), skip PKCE and name a default resource.
 - Two resources: altioo-mcp and iTop's REST/JSON API, each with the profiles it requires,

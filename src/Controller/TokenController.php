@@ -220,6 +220,7 @@ final class TokenController
 			Grants::End($oGrant, 'disconnected');
 			throw new OAuthException('invalid_grant', 'the connection was ended');
 		}
+		self::ClaimRotation($oGrant);
 
 		$sAccessToken = PersonalTokens::Renew($oToken, (string) $oClient->Get('client_name'), Config::AccessTokenLifetime(), $aScopes);
 		$sNewSecret = Secret::NewSecret();
@@ -237,6 +238,30 @@ final class TokenController
 		self::Save($oClient, ['last_used_date' => date('Y-m-d H:i:s', $iNow)]);
 
 		self::Issued($sAccessToken, Secret::Join((int) $oGrant->GetKey(), $sNewSecret), $aScopes);
+	}
+
+	/**
+	 * Claimed with a conditional update, as a code is: of two refreshes that got past the checks
+	 * with one refresh token at the same moment, only one rotates it. Without this both would,
+	 * the last write would win, and the other side's new refresh token would match nothing: an
+	 * ordinary refusal later rather than a detected reuse, and a stolen copy that could keep
+	 * the grant. The loser is refused now, and may retry with the same token within the grace
+	 * period, where it is the previous one.
+	 *
+	 * The stored hash is what is compared, and a value no password matches what is written: the
+	 * update always changes the row, so the affected-row count answers, even within the second
+	 * of the previous refresh. The rotation's own write replaces it straight after.
+	 */
+	private static function ClaimRotation(AltiooOAuthGrant $oGrant): void
+	{
+		$sTable = MetaModel::DBGetTable(AltiooOAuthGrant::class);
+		$sKey = MetaModel::DBGetKey(AltiooOAuthGrant::class);
+		$sHash = CMDBSource::Quote((string) $oGrant->Get('refresh_secret')->GetHash());
+		CMDBSource::Query("UPDATE `$sTable` SET `refresh_secret_hash` = CONCAT(`refresh_secret_hash`, '~rotating')"
+			." WHERE `$sKey` = ".(int) $oGrant->GetKey()." AND `refresh_secret_hash` = $sHash AND `status` = 'active'");
+		if (CMDBSource::AffectedRows() !== 1) {
+			throw new OAuthException('invalid_grant', 'refreshed concurrently; retry with the same refresh token');
+		}
 	}
 
 	/**

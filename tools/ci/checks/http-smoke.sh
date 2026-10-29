@@ -163,6 +163,39 @@ expect "the legitimate client's refresh token survives a use of the previous one
 sAccess3=$(printf '%s' "$sTok" | json_field access_token)
 sRefresh3=$(printf '%s' "$sTok" | json_field refresh_token)
 
+# Two refreshes with one refresh token at once, on a connection of their own. Whether they race
+# or run one after the other, no refresh token either of them hands out may be left matching
+# nothing: each is still accepted afterwards, in turn, inside the grace period. Under a race
+# without the claim, the last write wins and the other one is refused as a plain invalid_grant.
+sLoc=$(authorize)
+sBack=$(allow "$sLoc" "$(curl -sS -c "$JAR" -b "$JAR" "$sLoc")")
+sCode=$(printf '%s' "$sBack" | sed -n 's/.*[?&]code=\([^&]*\).*/\1/p')
+sRaceRefresh=$(curl -sS -d grant_type=authorization_code --data-urlencode "code=$sCode" -d "client_id=$sClient" \
+	--data-urlencode "redirect_uri=$CALLBACK" --data-urlencode "code_verifier=$sVerifier" "$ENDPOINT?route=token" | json_field refresh_token)
+RACE_A=$(mktemp); RACE_B=$(mktemp)
+curl -sS -d grant_type=refresh_token --data-urlencode "refresh_token=$sRaceRefresh" -d "client_id=$sClient" "$ENDPOINT?route=token" >"$RACE_A" &
+iRaceA=$!
+curl -sS -d grant_type=refresh_token --data-urlencode "refresh_token=$sRaceRefresh" -d "client_id=$sClient" "$ENDPOINT?route=token" >"$RACE_B" &
+iRaceB=$!
+# By process: a bare wait would also wait for the PHP server this script runs under.
+wait "$iRaceA" "$iRaceB"
+iIssued=0
+for sAnswer in "$(cat "$RACE_A")" "$(cat "$RACE_B")"; do
+	case "$sAnswer" in
+		*'"refresh_token"'*) iIssued=$((iIssued + 1)) ;;
+		*'refreshed concurrently'*) ;;
+		*) rm -f "$JAR" "$RACE_A" "$RACE_B"; fail "a concurrent refresh answered neither tokens nor a retry: ${sAnswer:0:300}" ;;
+	esac
+done
+[ "$iIssued" -ge 1 ] || { rm -f "$JAR" "$RACE_A" "$RACE_B"; fail "neither of two concurrent refreshes issued tokens"; }
+for sRaceFile in "$RACE_A" "$RACE_B"; do
+	sIssued=$(json_field refresh_token <"$sRaceFile")
+	[ -n "$sIssued" ] || continue
+	sTok=$(curl -sS -d grant_type=refresh_token --data-urlencode "refresh_token=$sIssued" -d "client_id=$sClient" "$ENDPOINT?route=token")
+	expect "a refresh token issued by one of two concurrent refreshes is still accepted" "$sTok" '"access_token"'
+done
+rm -f "$RACE_A" "$RACE_B"
+
 if [ -z "$ITOP_TOKEN" ] || [ "${ITOP_TOKEN#*:}" = "$ITOP_TOKEN" ]; then
 	rm -f "$JAR"
 	fail "module-smoke.php passed no confidential client"
