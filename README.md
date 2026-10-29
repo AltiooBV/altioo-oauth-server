@@ -237,7 +237,7 @@ In the configuration file, under `$MyModuleSettings['altioo-oauth-server']`.
 | `redirect_uris` | The web callbacks in the table under *Which clients can connect* | The only redirect URIs a client may register itself with, matched exactly. An entry ending in `/*` matches one more path segment, for a client with a callback per integration. Checked again at every authorize, so removing an entry also refuses the clients that registered with it. |
 | `allow_loopback` | `false` | Also accept `http://localhost`, `127.0.0.1` and `[::1]` on any port, for local clients. Turning it off refuses the local clients already registered too. |
 | `registration_rate_limit` | `300` | Registrations accepted from one IP address per hour. Every person connecting Claude registers from Anthropic's addresses, so keep it well above the number of people who may connect in an hour. |
-| `registration_global_limit` | `1000` | Registrations accepted per hour from all addresses together |
+| `registration_global_limit` | `1000` | Registrations accepted per hour from all addresses together. Anyone may register, so anyone can fill it: see *Troubleshooting*. |
 | `allowed_origins` | empty | Origins allowed to read the metadata, registration and token responses from a browser, for browser-based clients such as the MCP Inspector. Empty sends no CORS header, which is what Claude needs. |
 | `code_lifetime` | `60` | Seconds an authorization code is valid |
 | `access_token_lifetime` | `3600` | Seconds an access token is valid before the client refreshes it |
@@ -320,6 +320,7 @@ logged. Raise the level for this channel alone with
 | The client says the server cannot be found | The discovery document does not answer: `AllowOverride` is off, the URL Rewrite module is missing on IIS, or the client looks at the site root (see above). |
 | "Unknown application" on the iTop page | The client's redirect URI is not on `redirect_uris`, or its registration was deleted as unused. |
 | The client says it cannot register | Its callback is not on `redirect_uris`. The log line `Refused on route register: invalid_redirect_uri (this server does not allow the redirect URI ...)` names it: add it, exactly, if the host is the client's own. |
+| The client cannot register, and the log says `too many registrations` | `registration_rate_limit` or `registration_global_limit` was reached; the log line gives the caller's address. Registration is open to anyone, so a flood of registrations from a handful of addresses fills the global limit for everyone until they are an hour old. Connections already made are not affected. Refuse those addresses at the web server, or raise the limit. |
 | "Personal tokens not allowed" | The person's profiles are not in authent-token's `personal_tokens_allowed_profiles`. |
 | Connected, but every call fails | `token` is missing from `allowed_login_types`, or the resource refuses the person (altioo-mcp's profiles, `rest.php`'s REST Services User). |
 | The client asks to reconnect every day | `grant_idle_days` or `max_grant_days` is short, or the person or an administrator ended the connection. *OAuth connections* shows why it ended. |
