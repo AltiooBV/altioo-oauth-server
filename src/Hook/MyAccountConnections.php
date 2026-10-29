@@ -63,6 +63,20 @@ final class MyAccountConnections implements iMyAccountTabContentExtension
 	 */
 	public function ProvideConnections(): array
 	{
+		return self::Section() + [
+			'action' => Config::Endpoint('disconnect'),
+			'transaction_id' => utils::GetNewTransactionId(),
+		];
+	}
+
+	/**
+	 * The signed-in person's connections and the labels to list them with, shared with the
+	 * portal's My profile (PortalConnections), which posts its Disconnect elsewhere.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function Section(): array
+	{
 		$aConnections = [];
 		foreach (Grants::ActiveFor((int) UserRights::GetUserId()) as $oGrant) {
 			$aConnections[] = [
@@ -86,8 +100,6 @@ final class MyAccountConnections implements iMyAccountTabContentExtension
 				'',
 			],
 			'disconnect_label' => Dict::S('UI:AltiooOAuthServer:MyAccount:Disconnect'),
-			'action' => Config::Endpoint('disconnect'),
-			'transaction_id' => utils::GetNewTransactionId(),
 			'connections' => $aConnections,
 		];
 	}
