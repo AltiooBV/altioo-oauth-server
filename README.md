@@ -129,7 +129,9 @@ saying so.
   *My profile*. Both appear only to an account allowed personal tokens.
 - **An administrator**, under *Admin tools*, *OAuth connections*: open the connection and use
   *Revoke*. Disabling a client under *OAuth clients* ends each of its connections at its next
-  refresh, and refuses new ones.
+  refresh, and refuses new ones. Deleting a connection, or a client with its connections, ends
+  them and deletes their tokens too, but also deletes the record of them that *Revoke* and
+  disabling keep.
 - **iTop itself**, when the account is disabled, or no longer allowed personal tokens, or no
   longer holds a profile the resource requires: the next refresh fails and the connection ends.
 - **All of one person's connections at once:** *OAuth connections*, search on the user, then

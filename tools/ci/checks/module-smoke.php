@@ -216,6 +216,42 @@ $oPortalGrant->AllowWrite();
 $oPortalGrant->DBUpdate();
 check('the smoke administrator has the console', Altioo\iTop\Extension\OAuthServer\Service\Accounts::HasConsole($oAdminUser));
 
+// A connection deleted rather than revoked - directly, or with its client - must take its
+// token with it; and deleting an account that has a connection must still work, its tokens going
+// with it through authent-token rather than twice.
+[$oDeleted, $iDeletedToken] = $fnConnection([]);
+$oDeleted->AllowDelete();
+$oDeleted->DBDelete();
+check('deleting a connection deletes its token', MetaModel::GetObject('PersonalToken', $iDeletedToken, false, true) === null);
+$oDoomed = MetaModel::NewObject('AltiooOAuthClient', ['client_name' => 'Smoke deleted client', 'redirect_uris' => 'https://smoke.example/callback', 'source' => 'manual', 'auth_method' => 'none']);
+$oDoomed->AllowWrite();
+$oDoomed->DBInsert();
+[, $iDoomedToken] = $fnConnection(['client_id' => $oDoomed->GetKey()]);
+$oDoomed->AllowDelete();
+$oDoomed->DBDelete();
+check('deleting a client deletes its connections\' tokens', MetaModel::GetObject('PersonalToken', $iDoomedToken, false, true) === null);
+$oGone = MetaModel::NewObject('UserLocal', ['login' => 'smoke-gone-'.bin2hex(random_bytes(4)), 'language' => 'EN US', 'expiration' => 'never_expire']);
+$oGone->Set('password', 'Aa1!'.bin2hex(random_bytes(12)));
+$oGoneProfiles = $oGone->Get('profile_list');
+$oGoneProfiles->AddItem(MetaModel::NewObject('URP_UserProfile', ['profileid' => MetaModel::GetObjectByColumn('URP_Profiles', 'name', 'Administrator')->GetKey(), 'reason' => 'altioo-oauth-server HTTP smoke']));
+$oGone->Set('profile_list', $oGoneProfiles);
+$oGone->AllowWrite();
+$oGone->DBInsert();
+[$oGoneToken] = Altioo\iTop\Extension\OAuthServer\Service\PersonalTokens::Create((int) $oGone->GetKey(), 'Smoke', ['REST/JSON'], 3600);
+$iGoneToken = (int) $oGoneToken->GetKey();
+[$oGoneGrant] = $fnConnection(['user_id' => $oGone->GetKey(), 'personal_token_id' => $iGoneToken]);
+$iGoneGrant = (int) $oGoneGrant->GetKey();
+try {
+	$oGone->AllowDelete();
+	$oGone->DBDelete();
+	$bGoneDeleted = true;
+} catch (Exception $e) {
+	$bGoneDeleted = false;
+}
+check('an account with a connection can still be deleted', $bGoneDeleted);
+check('and its connection and token go with it', MetaModel::GetObject('AltiooOAuthGrant', $iGoneGrant, false, true) === null
+	&& MetaModel::GetObject('PersonalToken', $iGoneToken, false, true) === null);
+
 // A client that registered itself with a callback the allowlist has since dropped: authorize
 // must refuse it, whatever its own list says. Stored as registration stores it.
 $oWithdrawn = MetaModel::NewObject('AltiooOAuthClient', [

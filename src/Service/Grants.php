@@ -14,6 +14,7 @@ use DBObjectSet;
 use MetaModel;
 use AltiooOAuthClient;
 use AltiooOAuthGrant;
+use User;
 
 /**
  * Ending a connection, whoever ends it: the token endpoint, the clean-up process, the person
@@ -45,6 +46,22 @@ final class Grants
 			$oGrant->AllowWrite();
 			$oGrant->DBUpdate();
 		}
+	}
+
+	/**
+	 * A grant deleted rather than ended, in the console or with its client (DEL_AUTO), takes its
+	 * token with it: the token would otherwise work until it expires, with nothing left to renew
+	 * it or to say what it was for. The history names whoever deleted it. A grant deleted with
+	 * its account is left alone: that account is already gone, the deletion plan removes it
+	 * first, and authent-token's own DEL_AUTO deletes its tokens in the same plan, which a
+	 * deletion from here would pull from under it. An ended grant has no token left.
+	 */
+	public static function Deleted(AltiooOAuthGrant $oGrant): void
+	{
+		if (MetaModel::GetObject(User::class, (int) $oGrant->Get('user_id'), false, true) === null) {
+			return;
+		}
+		PersonalTokens::Delete((int) $oGrant->Get('personal_token_id'), null);
 	}
 
 	/**

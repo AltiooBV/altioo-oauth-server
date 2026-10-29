@@ -509,6 +509,14 @@
           <tracking_level>none</tracking_level>
         </field>
       </fields>
+      <!-- Deleting a grant, or its client, must not leave its token working (Grants::Deleted). -->
+      <event_listeners>
+        <event_listener id="DeleteTokenWithGrant">
+          <event>EVENT_DB_AFTER_DELETE</event>
+          <callback>OnAfterDeleteGrant</callback>
+          <rank>0</rank>
+        </event_listener>
+      </event_listeners>
       <lifecycle>
         <stimuli>
           <stimulus id="ev_revoke" xsi:type="StimulusUserAction"/>
@@ -574,6 +582,16 @@
 		\Altioo\iTop\Extension\OAuthServer\Service\Grants::End($this, 'revoked', false, false);
 
 		return true;
+	}]]></code>
+        </method>
+        <method id="OnAfterDeleteGrant">
+          <comment>/** Deleted rather than revoked, here or with its client: its token goes too (src/Service/Grants.php). */</comment>
+          <static>false</static>
+          <access>public</access>
+          <type>EventListener</type>
+          <code><![CDATA[	public function OnAfterDeleteGrant(Combodo\iTop\Service\Events\EventData $oEventData)
+	{
+		\Altioo\iTop\Extension\OAuthServer\Service\Grants::Deleted($this);
 	}]]></code>
         </method>
       </methods>
