@@ -118,14 +118,12 @@ a profile in its `mcp_allowed_profiles`, and for a portal account its portal mod
 REST/JSON, the *REST Services User* profile. Otherwise the consent page is replaced by a page
 saying so.
 
-A portal account has no *My Account* page, so it cannot see or end its own connections: an
-administrator revokes them for it.
-
 ## Ending a connection
 
 - **The person**, under *My Account*, *Personal Tokens*. The *Connected applications* section
   lists each connection with *Disconnect*. Deleting the connection's token in the list below it
-  ends the connection too.
+  ends the connection too. In the portal, the same list is the *Connected applications* tab of
+  *My profile*. Both appear only to an account allowed personal tokens.
 - **An administrator**, under *Admin tools*, *OAuth connections*: open the connection and use
   *Revoke*. Disabling a client under *OAuth clients* ends each of its connections at its next
   refresh, and refuses new ones.
@@ -154,7 +152,7 @@ A lower `max_grant_days` takes effect at each connection's next refresh, at most
 | | |
 |---|---|
 | iTop and PHP | What [`.github/itop-support.json`](.github/itop-support.json) declares, which is what CI installs on |
-| iTop modules | `authent-token` 2.2.1 or later, which ships with iTop |
+| iTop modules | `authent-token` 2.2.1 and `itop-portal-base` 3.2.1 or later, which ship with iTop. The second is what the portal tab under *My profile* is built on; iTop 3.2.0 does not have it. |
 | Login mode | `token` in `allowed_login_types`, as for any personal token |
 | HTTPS | Required. OAuth over plain HTTP hands every code and token to the network. |
 | Network | The client's servers must reach iTop. For Claude, that is Anthropic's addresses. |
@@ -278,6 +276,7 @@ defaults, so list every resource to keep.
 | Classes | `AltiooOAuthClient`, `AltiooOAuthGrant` (a connection) and `AltiooOAuthCode`, visible to Administrators only. The prefix is there because iTop's own OAuth client module already has an `OAuthClient` class. |
 | Menus | *Admin tools*, *OAuth clients* and *OAuth connections* |
 | My Account | A *Connected applications* section under *Personal Tokens* |
+| Portal | A *Connected applications* tab under *My profile*, which posts *Disconnect* back to that page |
 | Endpoints | `env-production/altioo-oauth-server/index.php`, with `route=` `openid-configuration`, `oauth-authorization-server`, `protected-resource`, `register`, `authorize`, `token` and `disconnect`; and the two `.well-known` paths above |
 | Background process | Hourly: ends connections past their lifetime, deletes spent codes, old ended connections, and clients registered but never used for 24 hours |
 | Profiles | None |
