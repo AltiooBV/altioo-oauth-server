@@ -268,6 +268,7 @@ case "$sOut" in *[Aa]ccess-[Cc]ontrol-*) rm -f "$JAR"; fail "a CORS header was s
 echo "   ok  no CORS header for an origin nobody listed"
 sOut=$(curl -sS -D - -o /dev/null -H 'Origin: https://evil.example' "$ENDPOINT?route=openid-configuration")
 expect "the server metadata is readable from any origin" "$sOut" 'Access-Control-Allow-Origin: *'
+expect "the server metadata may be kept a few minutes, by the client only" "$sOut" 'Cache-Control: private, max-age=300'
 case "$sOut" in *[Aa]llow-[Cc]redentials*) rm -f "$JAR"; fail "the discovery documents allow credentials" ;; esac
 sOut=$(curl -sS -D - -o /dev/null -X OPTIONS -H 'Origin: https://evil.example' -H 'Access-Control-Request-Method: GET' "$ENDPOINT?route=protected-resource&for=mcp")
 expect "a preflight for the resource metadata is answered" "$sOut" ' 204'

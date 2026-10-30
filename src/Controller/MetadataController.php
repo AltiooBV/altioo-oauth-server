@@ -46,7 +46,7 @@ final class MetadataController
 			'token_endpoint_auth_methods_supported' => ['none', 'client_secret_basic', 'client_secret_post'],
 			'authorization_response_iss_parameter_supported' => true,
 			'scopes_supported' => array_values(array_unique($aScopes)),
-		]);
+		], Http::CACHE_DISCOVERY);
 	}
 
 	public static function ProtectedResource(string $sKey): never
@@ -62,6 +62,6 @@ final class MetadataController
 			'authorization_servers' => [Config::Issuer()],
 			'scopes_supported' => array_values(array_unique(array_merge($oResource->oScopes->Offered([]), $oResource->oScopes->Forced()))),
 			'bearer_methods_supported' => ['header'],
-		]);
+		], Http::CACHE_DISCOVERY);
 	}
 }

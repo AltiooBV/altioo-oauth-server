@@ -11,19 +11,32 @@ namespace Altioo\iTop\Extension\OAuthServer;
 use Dict;
 
 /**
- * What the endpoints send back. Every response is no-store: each one either is a credential,
- * leads to one, or describes how to get one.
+ * What the endpoints send back. Every response is no-store, since each one is a credential or
+ * leads to one, except a discovery document, which a client may keep for a few minutes.
  *
  * @since 0.1.0
  */
 final class Http
 {
-	public static function Json(int $iStatus, array $aBody): never
+	/**
+	 * private, not public: iTop opens a session for every request, so the response may carry a
+	 * session cookie, which no shared cache may hand to anyone else.
+	 */
+	public const CACHE_DISCOVERY = 'private, max-age=300';
+
+	public static function Json(int $iStatus, array $aBody, string $sCacheControl = 'no-store'): never
 	{
 		http_response_code($iStatus);
 		header('Content-Type: application/json');
-		header('Cache-Control: no-store');
-		header('Pragma: no-cache');
+		header('Cache-Control: '.$sCacheControl);
+		if ($sCacheControl === 'no-store') {
+			header('Pragma: no-cache');
+		} else {
+			// The session start already sent PHP's nocache limiter: a past Expires and a Pragma
+			// that would contradict the Cache-Control above.
+			header_remove('Expires');
+			header_remove('Pragma');
+		}
 		echo json_encode($aBody, JSON_UNESCAPED_SLASHES);
 		exit;
 	}
