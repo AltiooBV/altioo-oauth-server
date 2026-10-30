@@ -27,14 +27,19 @@ use utils;
 final class Router
 {
 	public const LOG_CHANNEL = 'altioo-oauth-server';
-	/** The routes a program calls; authorize and disconnect are pages, and need no CORS. */
-	private const CORS_ROUTES = ['openid-configuration', 'oauth-authorization-server', 'protected-resource', 'register', 'token'];
+	/** Readable from any origin (CorsPolicy says why). */
+	private const DISCOVERY_ROUTES = ['openid-configuration', 'oauth-authorization-server', 'protected-resource'];
+	/** The other routes a program calls; authorize and disconnect are pages, and need no CORS. */
+	private const CORS_ROUTES = ['register', 'token'];
 
 	public static function HandleRequest(): never
 	{
 		$sRoute = utils::ReadParam('route', '', false, 'raw_data');
-		if (in_array($sRoute, self::CORS_ROUTES, true)) {
-			self::Cors();
+		if (in_array($sRoute, self::DISCOVERY_ROUTES, true)) {
+			self::SendCors(CorsPolicy::PublicHeaders(self::Method()));
+		} elseif (in_array($sRoute, self::CORS_ROUTES, true)) {
+			$sOrigin = is_string($_SERVER['HTTP_ORIGIN'] ?? null) ? $_SERVER['HTTP_ORIGIN'] : '';
+			self::SendCors(CorsPolicy::Headers($sOrigin, Config::AllowedOrigins(), self::Method()));
 		}
 		try {
 			match ($sRoute) {
@@ -70,17 +75,22 @@ final class Router
 		}
 	}
 
-	private static function Cors(): void
+	/**
+	 * @param list<string> $aHeaders
+	 */
+	private static function SendCors(array $aHeaders): void
 	{
-		$sOrigin = is_string($_SERVER['HTTP_ORIGIN'] ?? null) ? $_SERVER['HTTP_ORIGIN'] : '';
-		$sMethod = is_string($_SERVER['REQUEST_METHOD'] ?? null) ? $_SERVER['REQUEST_METHOD'] : '';
-		$aHeaders = CorsPolicy::Headers($sOrigin, Config::AllowedOrigins(), $sMethod);
 		foreach ($aHeaders as $sHeader) {
 			header($sHeader);
 		}
-		if ($aHeaders !== [] && CorsPolicy::IsPreflight($sMethod)) {
+		if ($aHeaders !== [] && CorsPolicy::IsPreflight(self::Method())) {
 			http_response_code(204);
 			exit;
 		}
+	}
+
+	private static function Method(): string
+	{
+		return is_string($_SERVER['REQUEST_METHOD'] ?? null) ? $_SERVER['REQUEST_METHOD'] : '';
 	}
 }

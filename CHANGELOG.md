@@ -38,3 +38,6 @@ tested against claude.ai or any other real client.
 - Requires iTop 3.2.1 or later, the first release with the portal's *My profile* hooks.
 - `.htaccess` and `web.config` that serve only the entry point and the discovery paths, for
   GET, HEAD, POST and OPTIONS only.
+- The discovery documents are readable from any origin, without credentials, so that a
+  browser-based client can find the server; registration and token answer CORS only for
+  `allowed_origins`.

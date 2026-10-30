@@ -31,6 +31,14 @@ final class CorsPolicyTest extends TestCase
 		$this->assertSame(['Access-Control-Allow-Origin: '.self::INSPECTOR, 'Vary: Origin'], CorsPolicy::Headers(self::INSPECTOR, [self::INSPECTOR], 'POST'));
 	}
 
+	public function testTheDiscoveryDocumentsAreReadableFromAnyOriginWithoutCredentials(): void
+	{
+		$this->assertSame(['Access-Control-Allow-Origin: *'], CorsPolicy::PublicHeaders('GET'));
+		$aHeaders = CorsPolicy::PublicHeaders('OPTIONS');
+		$this->assertContains('Access-Control-Allow-Headers: MCP-Protocol-Version', $aHeaders);
+		$this->assertSame([], array_filter($aHeaders, static fn(string $s) => stripos($s, 'Allow-Credentials') !== false));
+	}
+
 	public function testAPreflightIsAnswered(): void
 	{
 		$aHeaders = CorsPolicy::Headers(self::INSPECTOR, [self::INSPECTOR], 'OPTIONS');

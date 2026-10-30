@@ -261,10 +261,16 @@ expect "a lower max_grant_days ends a connection made before it" "$sOut" '"error
 sOut=$(token -u "$sCcId:$sCcSecret" -d grant_type=refresh_token --data-urlencode "refresh_token=$sPortalRefresh")
 expect "a connection made portal-only ends once the account has the console" "$sOut" 'the account was given the console'
 
-# CORS: nothing for an origin nobody listed, which by default is every origin.
-sOut=$(curl -sS -D - -o /dev/null -H 'Origin: https://evil.example' "$ENDPOINT?route=openid-configuration")
+# CORS: nothing on the token endpoint for an origin nobody listed, which by default is
+# every origin; the discovery documents are readable from any origin, without credentials.
+sOut=$(curl -sS -D - -o /dev/null -H 'Origin: https://evil.example' -d grant_type=refresh_token "$ENDPOINT?route=token")
 case "$sOut" in *[Aa]ccess-[Cc]ontrol-*) rm -f "$JAR"; fail "a CORS header was sent for an unlisted origin" ;; esac
 echo "   ok  no CORS header for an origin nobody listed"
+sOut=$(curl -sS -D - -o /dev/null -H 'Origin: https://evil.example' "$ENDPOINT?route=openid-configuration")
+expect "the server metadata is readable from any origin" "$sOut" 'Access-Control-Allow-Origin: *'
+case "$sOut" in *[Aa]llow-[Cc]redentials*) rm -f "$JAR"; fail "the discovery documents allow credentials" ;; esac
+sOut=$(curl -sS -D - -o /dev/null -X OPTIONS -H 'Origin: https://evil.example' -H 'Access-Control-Request-Method: GET' "$ENDPOINT?route=protected-resource&for=mcp")
+expect "a preflight for the resource metadata is answered" "$sOut" ' 204'
 
 # An account the REST/JSON resource would refuse is refused before consent, with a reason.
 NOREST_JAR=$(mktemp)
