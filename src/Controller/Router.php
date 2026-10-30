@@ -30,7 +30,7 @@ final class Router
 	/** Readable from any origin (CorsPolicy says why). */
 	private const DISCOVERY_ROUTES = ['openid-configuration', 'oauth-authorization-server', 'protected-resource'];
 	/** The other routes a program calls; authorize and disconnect are pages, and need no CORS. */
-	private const CORS_ROUTES = ['register', 'token'];
+	private const CORS_ROUTES = ['register', 'token', 'revoke'];
 
 	public static function HandleRequest(): never
 	{
@@ -48,6 +48,7 @@ final class Router
 				'register' => RegistrationController::Register(),
 				'authorize' => AuthorizationController::Authorize(),
 				'token' => TokenController::Token(),
+				'revoke' => TokenController::Revoke(),
 				'disconnect' => ConnectionsController::Disconnect(),
 				default => Http::OAuthError('invalid_request', 'unknown endpoint', 404),
 			};

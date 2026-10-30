@@ -31,7 +31,8 @@ tested against claude.ai or any other real client.
   Code), with entries ending in `/*` for a callback per integration. It is checked at
   registration and again at every authorize, so removing an entry also refuses the clients that
   registered with it.
-- Ending a connection: *Disconnect* under My Account, or under *Connected applications* in the
+- Ending a connection: by the client, revoking its refresh token (RFC 7009), which ends the
+  access token too; *Disconnect* under My Account, or under *Connected applications* in the
   portal's *My profile* for an account that has only the portal; *Revoke* in the console, where
   deleting a connection or its client deletes its token too; and an hourly clean-up of
   connections past their lifetime, spent codes and unused clients.

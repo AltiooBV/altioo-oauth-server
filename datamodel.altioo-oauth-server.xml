@@ -472,6 +472,10 @@
               <code>withdrawn</code>
               <rank>55</rank>
             </value>
+            <value id="client_revoked">
+              <code>client_revoked</code>
+              <rank>58</rank>
+            </value>
             <value id="revoked">
               <code>revoked</code>
               <rank>60</rank>

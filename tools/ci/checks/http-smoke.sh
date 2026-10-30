@@ -5,7 +5,7 @@
 # and what the token and authorize endpoints refuse without anyone signed in.
 # With ITOP_ADMIN_USER and ITOP_ADMIN_PWD set it then goes through the whole
 # flow - login, consent, code exchange, a REST call with the minted token,
-# refresh in place (ADR 0004), the refresh grace period - first as a public
+# refresh in place (ADR 0004), the refresh grace period, revocation - first as a public
 # client registered by itself, then as the confidential client
 # checks/module-smoke.php created: no PKCE, no resource parameter, the secret in a
 # Basic header. ITOP_TOKEN carries that client and the other fixtures module-smoke.php
@@ -195,6 +195,28 @@ for sRaceFile in "$RACE_A" "$RACE_B"; do
 	expect "a refresh token issued by one of two concurrent refreshes is still accepted" "$sTok" '"access_token"'
 done
 rm -f "$RACE_A" "$RACE_B"
+
+# The client ends the connection itself (RFC 7009), on a connection of its own.
+revoke() { curl -sS -w '\n%{http_code}' "$@" "$ENDPOINT?route=revoke"; }
+sLoc=$(authorize)
+sBack=$(allow "$sLoc" "$(curl -sS -c "$JAR" -b "$JAR" "$sLoc")")
+sCode=$(printf '%s' "$sBack" | sed -n 's/.*[?&]code=\([^&]*\).*/\1/p')
+sTok=$(curl -sS -d grant_type=authorization_code --data-urlencode "code=$sCode" -d "client_id=$sClient" \
+	--data-urlencode "redirect_uri=$CALLBACK" --data-urlencode "code_verifier=$sVerifier" "$ENDPOINT?route=token")
+sRevAccess=$(printf '%s' "$sTok" | json_field access_token)
+sRevRefresh=$(printf '%s' "$sTok" | json_field refresh_token)
+expect "the server metadata names the revocation endpoint" "$sMeta" '"revocation_endpoint":"'
+sOut=$(revoke -d "client_id=$sClient2" --data-urlencode "token=$sRevRefresh")
+expect "another client's refresh token is answered as revoked" "$sOut" '200'
+expect "and its connection is left as it is" "$(rest_get "$sRevAccess")" '"code":0'
+sOut=$(revoke -d "client_id=$sClient" --data-urlencode "token=$sRevAccess" -d token_type_hint=access_token)
+expect "an access token is not revoked on its own" "$sOut" '"error":"unsupported_token_type"'
+sOut=$(revoke -d "client_id=$sClient" --data-urlencode "token=$sRevRefresh")
+expect "revoking a refresh token answers 200" "$sOut" '200'
+expect "revoking it ends its access token too" "$(rest_get "$sRevAccess")" '"code":1'
+sOut=$(token -d grant_type=refresh_token --data-urlencode "refresh_token=$sRevRefresh" -d "client_id=$sClient")
+expect "a revoked refresh token is invalid_grant" "$sOut" '"error":"invalid_grant"'
+expect "revoking it again still answers 200" "$(revoke -d "client_id=$sClient" --data-urlencode "token=$sRevRefresh")" '200'
 
 if [ -z "$ITOP_TOKEN" ] || [ "${ITOP_TOKEN#*:}" = "$ITOP_TOKEN" ]; then
 	rm -f "$JAR"

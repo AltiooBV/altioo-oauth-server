@@ -44,6 +44,8 @@ final class MetadataController
 			// none for the clients that register themselves; a secret for the ones an
 			// administrator creates.
 			'token_endpoint_auth_methods_supported' => ['none', 'client_secret_basic', 'client_secret_post'],
+			'revocation_endpoint' => Config::Endpoint('revoke'),
+			'revocation_endpoint_auth_methods_supported' => ['none', 'client_secret_basic', 'client_secret_post'],
 			'authorization_response_iss_parameter_supported' => true,
 			'scopes_supported' => array_values(array_unique($aScopes)),
 		], Http::CACHE_DISCOVERY);

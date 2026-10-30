@@ -37,7 +37,8 @@ final class Http
 			header_remove('Expires');
 			header_remove('Pragma');
 		}
-		echo json_encode($aBody, JSON_UNESCAPED_SLASHES);
+		// An empty answer is an empty object, never a list.
+		echo json_encode($aBody === [] ? new \stdClass() : $aBody, JSON_UNESCAPED_SLASHES);
 		exit;
 	}
 

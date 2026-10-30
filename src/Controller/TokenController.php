@@ -51,6 +51,40 @@ final class TokenController
 	}
 
 	/**
+	 * Revocation (RFC 7009), for a client signing out or being removed: presenting a refresh
+	 * token ends its connection, which deletes the access token too. Only refresh tokens: an
+	 * access token is a PersonalToken, which authent-token alone knows how to read back.
+	 *
+	 * A token that is unknown, already ended, or another client's is answered as a revoked one
+	 * and left as it is: the RFC asks no error for an invalid token, since the client could do
+	 * nothing with it, and the answer then tells nobody whether a connection exists.
+	 */
+	public static function Revoke(): never
+	{
+		if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+			throw new OAuthException('invalid_request', 'POST only', 405);
+		}
+		$oClient = self::AuthenticatedClient();
+		$sToken = self::Posted('token');
+		if ($sToken === '') {
+			throw new OAuthException('invalid_request', 'token is missing');
+		}
+		if (self::Posted('token_type_hint') === 'access_token') {
+			throw new OAuthException('unsupported_token_type', 'revoke the refresh token: that ends its access token too');
+		}
+		$aParts = Secret::Split($sToken);
+		$oGrant = $aParts === null ? null : MetaModel::GetObject(AltiooOAuthGrant::class, $aParts[0], false, true);
+		// Ownership before the secret, as for a code: CheckPassword is a bcrypt comparison.
+		if ($oGrant instanceof AltiooOAuthGrant && $oGrant->Get('status') === 'active'
+			&& (int) $oGrant->Get('client_id') === (int) $oClient->GetKey()
+			&& ($oGrant->Get('refresh_secret')->CheckPassword($aParts[1]) || $oGrant->Get('previous_refresh_secret')->CheckPassword($aParts[1]))) {
+			Grants::End($oGrant, 'client_revoked');
+		}
+
+		Http::Json(200, []);
+	}
+
+	/**
 	 * A public client names itself; a confidential one proves it. A confidential client's
 	 * secret is never optional, and a public client sending one is refused rather than
 	 * believed, so that nobody comes to rely on a check that is not made.
