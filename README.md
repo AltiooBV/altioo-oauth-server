@@ -19,7 +19,11 @@ Two resources ship in the first release, each declared in the module's `resource
 
 - **[altioo-mcp](https://github.com/AltiooBV/altioo-mcp)**, the MCP server for iTop. This is
   what Claude's connector reaches. It is offered only where altioo-mcp is installed.
-- **iTop's REST/JSON API** (`webservices/rest.php`), for any OAuth client that needs it.
+- **iTop's REST/JSON API** (`webservices/rest.php`), for a client configured by hand (below),
+  or one given this server's metadata URL: `rest.php` does not announce the server, so no
+  client finds it on its own. It reads the token from an `Auth-Token` header or an
+  `auth_token` parameter, not from `Authorization: Bearer`, so the client must be able to send
+  one of those.
 
 The tokens it issues are the same `PersonalToken` objects iTop's `authent-token` module already
 manages. altioo-mcp and `rest.php` therefore check them exactly as they check a token made by
