@@ -141,7 +141,8 @@ final class Config
 					self::StringList($aResource['forced_scopes'] ?? [])
 				),
 				self::StringList($aResource['required_profiles'] ?? []),
-				self::Grades($aResource['grades'] ?? [])
+				self::Choices($aResource['grades'] ?? []),
+				self::Choices($aResource['limits'] ?? [])
 			);
 		}
 
@@ -168,6 +169,10 @@ final class Config
 			'mcp' => [
 				'url' => rtrim(utils::GetAbsoluteUrlModulesRoot(), '/').'/altioo-mcp/index.php',
 				'scope_prefix' => 'MCP',
+				// Not the MCP-toolset-* scopes: each one restricts a token to its toolset, which
+				// a person deciding what to allow has no reason to know. An administrator who
+				// wants them offers them as limits, with labels of their own.
+				'offered_scopes' => ['MCP-read', 'MCP-write', 'MCP-delete', 'MCP', 'MCP-advisory'],
 				'default_scopes' => ['MCP-read'],
 				'required_profiles' => self::StringList(MetaModel::GetModuleSetting('altioo-mcp', 'mcp_allowed_profiles', ['Administrator', 'MCP Services User'])),
 				'grades' => [
@@ -175,6 +180,9 @@ final class Config
 					['label' => 'UI:AltiooOAuthServer:Grade:Write', 'scopes' => ['MCP-write']],
 					['label' => 'UI:AltiooOAuthServer:Grade:Delete', 'scopes' => ['MCP-write', 'MCP-delete']],
 					['label' => 'UI:AltiooOAuthServer:Grade:All', 'scopes' => ['MCP']],
+				],
+				'limits' => [
+					['label' => 'UI:AltiooOAuthServer:Limit:Advisory', 'scopes' => ['MCP-advisory']],
 				],
 			],
 			'rest' => [
@@ -203,16 +211,16 @@ final class Config
 	/**
 	 * @return list<array{label: string, scopes: list<string>}>
 	 */
-	private static function Grades(mixed $value): array
+	private static function Choices(mixed $value): array
 	{
-		$aGrades = [];
-		foreach (is_array($value) ? $value : [] as $aGrade) {
-			if (is_array($aGrade) && is_string($aGrade['label'] ?? null) && self::StringList($aGrade['scopes'] ?? []) !== []) {
-				$aGrades[] = ['label' => $aGrade['label'], 'scopes' => self::StringList($aGrade['scopes'])];
+		$aChoices = [];
+		foreach (is_array($value) ? $value : [] as $aChoice) {
+			if (is_array($aChoice) && is_string($aChoice['label'] ?? null) && self::StringList($aChoice['scopes'] ?? []) !== []) {
+				$aChoices[] = ['label' => $aChoice['label'], 'scopes' => self::StringList($aChoice['scopes'])];
 			}
 		}
 
-		return $aGrades;
+		return $aChoices;
 	}
 
 	/**

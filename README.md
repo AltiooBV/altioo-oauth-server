@@ -262,14 +262,26 @@ In the configuration file, under `$MyModuleSettings['altioo-oauth-server']`.
 			['label' => 'UI:AltiooOAuthServer:Grade:Read', 'scopes' => ['MCP-read']],
 			['label' => 'UI:AltiooOAuthServer:Grade:Write', 'scopes' => ['MCP-write']],
 		],
+		'limits' => [                         // unticked checkboxes that narrow the grade chosen
+			['label' => 'Only the tools that read and write objects', 'scopes' => ['MCP-toolset-objects']],
+		],
 	],
 ],
 ```
 
-The defaults: for altioo-mcp, its `mcp_allowed_profiles` as `required_profiles`, and four
-grades (read only; read and change; read, change and delete; everything); for REST/JSON, the
-*REST Services User* profile when `rest.php` requires it (`secure_rest_services` on and
-`allow_rest_services_via_tokens` off). A grade's `label` is a dictionary key or plain text.
+The defaults: for altioo-mcp, its `mcp_allowed_profiles` as `required_profiles`; the read,
+write, delete, `MCP` and `MCP-advisory` scopes as `offered_scopes`; four grades (read only;
+read and change; read, change and delete; everything); and one limit, `MCP-advisory`, worded
+as "only propose changes, never make them". For REST/JSON, the *REST Services User* profile
+when `rest.php` requires it (`secure_rest_services` on and `allow_rest_services_via_tokens`
+off). A `label` is a dictionary key or plain text.
+
+A scope that restricts a token rather than allowing more, such as altioo-mcp's
+`MCP-toolset-*`, belongs in `limits`. Offered any other way it is a checkbox under "And, if you
+want:", where a person reads it as something more to allow. That is why the default offer
+leaves the toolsets out. A limit is offered whatever the client asks for, since it only ever
+grants less, and it cannot be granted on its own: a person who ticks a limit and nothing else
+is told that nothing was selected.
 
 `url` must be the resource's URL exactly as clients send it. Setting `resources` replaces both
 defaults, so list every resource to keep.

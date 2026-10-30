@@ -21,13 +21,16 @@ final class ProtectedResource
 	 *     empty when it refuses nobody on profile grounds
 	 * @param list<array{label: string, scopes: list<string>}> $aGrades choices the consent page
 	 *     offers as one radio button each, instead of a checkbox per scope
+	 * @param list<array{label: string, scopes: list<string>}> $aLimits choices that narrow what
+	 *     the chosen grade allows, offered as a checkbox each under their own heading
 	 */
 	public function __construct(
 		public readonly string $sKey,
 		public readonly string $sUrl,
 		public readonly ScopePolicy $oScopes,
 		public readonly array $aRequiredProfiles = [],
-		public readonly array $aGrades = []
+		public readonly array $aGrades = [],
+		public readonly array $aLimits = []
 	)
 	{
 	}

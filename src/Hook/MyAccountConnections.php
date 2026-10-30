@@ -78,11 +78,12 @@ final class MyAccountConnections implements iMyAccountTabContentExtension
 	public static function Section(): array
 	{
 		$aConnections = [];
+		$aResources = Config::Resources();
 		foreach (Grants::ActiveFor((int) UserRights::GetUserId()) as $oGrant) {
 			$aConnections[] = [
 				'id' => $oGrant->GetKey(),
 				'client' => Grants::ClientName($oGrant),
-				'scopes' => implode(', ', array_map([AuthorizationController::class, 'ScopeLabel'], explode(' ', (string) $oGrant->Get('scope')))),
+				'scopes' => AuthorizationController::DescribeScopes($aResources[$oGrant->Get('resource')] ?? null, array_values(array_filter(explode(' ', (string) $oGrant->Get('scope'))))),
 				'since' => AttributeDateTime::GetFormat()->Format($oGrant->Get('creation_date')),
 				'last_used' => AttributeDateTime::GetFormat()->Format($oGrant->Get('last_refresh_date')),
 			];

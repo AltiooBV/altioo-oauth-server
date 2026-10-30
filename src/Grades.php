@@ -10,7 +10,9 @@ namespace Altioo\iTop\Extension\OAuthServer;
 
 /**
  * A resource's grades: named sets of scopes the consent page offers as one radio button each,
- * so that a person picks "read only" rather than ticking MCP-read.
+ * so that a person picks "read only" rather than ticking MCP-read. Its limits have the same
+ * shape and are checkboxes: scopes that narrow a connection rather than widen it, such as a
+ * rehearsal mode, which an extra checkbox would otherwise present as something more to allow.
  *
  * @since 0.1.0
  */
@@ -54,6 +56,51 @@ final class Grades
 		}
 
 		return array_values(array_unique($aOffered));
+	}
+
+	/**
+	 * The offer with every limit the administrator offers added. A limit only ever narrows what
+	 * a connection may do, so offering one the client did not ask for still grants less than
+	 * asked.
+	 *
+	 * @param list<array{label: string, scopes: list<string>}> $aLimits
+	 * @param list<string> $aOffered the offer for this request
+	 * @param list<string> $aAdminOffer what the resource offers to any request
+	 * @return list<string>
+	 */
+	public static function WithLimits(array $aLimits, array $aOffered, array $aAdminOffer): array
+	{
+		foreach (self::Usable($aLimits, $aAdminOffer) as $aLimit) {
+			$aOffered = array_merge($aOffered, $aLimit['scopes']);
+		}
+
+		return array_values(array_unique($aOffered));
+	}
+
+	/**
+	 * How a connection's scopes read to the person who made it: the widest grade they cover,
+	 * the limits they carry, and the scopes neither accounts for.
+	 *
+	 * @param list<array{label: string, scopes: list<string>}> $aGrades
+	 * @param list<array{label: string, scopes: list<string>}> $aLimits
+	 * @param list<string> $aScopes
+	 * @return array{labels: list<string>, rest: list<string>} labels as the settings give them
+	 */
+	public static function Describe(array $aGrades, array $aLimits, array $aScopes): array
+	{
+		$aLabels = [];
+		$aCovered = [];
+		$iWidest = array_key_last(self::Usable($aGrades, $aScopes));
+		if ($iWidest !== null) {
+			$aLabels[] = $aGrades[$iWidest]['label'];
+			$aCovered = $aGrades[$iWidest]['scopes'];
+		}
+		foreach (self::Usable($aLimits, $aScopes) as $aLimit) {
+			$aLabels[] = $aLimit['label'];
+			$aCovered = array_merge($aCovered, $aLimit['scopes']);
+		}
+
+		return ['labels' => $aLabels, 'rest' => array_values(array_diff($aScopes, $aCovered))];
 	}
 
 	/**

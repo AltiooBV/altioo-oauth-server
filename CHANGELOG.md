@@ -24,7 +24,9 @@ tested against claude.ai or any other real client.
 - Clients created by an administrator, which may be confidential (`client_secret_basic`,
   `client_secret_post`), skip PKCE and name a default resource.
 - Two resources: altioo-mcp and iTop's REST/JSON API, each with the profiles it requires,
-  checked before consent, and the grades the consent page offers.
+  checked before consent, and the grades the consent page offers. Scopes that narrow a
+  connection are `limits`, shown under their own heading rather than as something more to
+  allow; altioo-mcp's toolsets are not offered by default, and its rehearsal mode is a limit.
 - A default allowlist of the main MCP clients' web callbacks (Claude, ChatGPT, Cursor, VS
   Code), with entries ending in `/*` for a callback per integration. It is checked at
   registration and again at every authorize, so removing an entry also refuses the clients that

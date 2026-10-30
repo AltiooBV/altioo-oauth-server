@@ -167,6 +167,8 @@
         <entry id="UI:AltiooOAuthServer:Grade:Delete" _delta="force"><![CDATA[Read, change and delete]]></entry>
         <entry id="UI:AltiooOAuthServer:Grade:All" _delta="force"><![CDATA[Everything I can do]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Also" _delta="force"><![CDATA[And, if you want:]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:Limits" _delta="force"><![CDATA[You can also limit it:]]></entry>
+        <entry id="UI:AltiooOAuthServer:Limit:Advisory" _delta="force"><![CDATA[Only propose changes, never make them]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:OnlyYours" _delta="force"><![CDATA[Allow only if you started this connection yourself, just now. If someone sent you this link, deny.]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:ResourceNotAllowed" _delta="force"><![CDATA[Not available for your account]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:ResourceNotAllowed+" _delta="force"><![CDATA[Your profiles do not give access to what this application asks for, so every call it made would be refused. Ask your iTop administrator.]]></entry>

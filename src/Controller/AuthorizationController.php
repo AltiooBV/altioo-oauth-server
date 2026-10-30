@@ -86,7 +86,8 @@ final class AuthorizationController
 		if (!$oResource->AllowsUser($oUser)) {
 			throw new PageException('UI:AltiooOAuthServer:Page:ResourceNotAllowed', 403);
 		}
-		$aOffered = Grades::WithNarrower($oResource->aGrades, $oResource->oScopes->Offered($aRequest['scope']), $oResource->oScopes->Offered([]));
+		$aAdminOffer = $oResource->oScopes->Offered([]);
+		$aOffered = Grades::WithLimits($oResource->aLimits, Grades::WithNarrower($oResource->aGrades, $oResource->oScopes->Offered($aRequest['scope']), $aAdminOffer), $aAdminOffer);
 
 		// Not the request method: iTop's login form posts back to this same URL, so a POST is
 		// also what arrives right after a form login.
@@ -200,10 +201,18 @@ final class AuthorizationController
 		if (isset($aGrades[$sGrade])) {
 			$aTicked = array_merge($aTicked, $aGrades[$sGrade]['scopes']);
 		}
-		$aGranted = $oResource->oScopes->Granted($aOffered, $aTicked);
-		if ($aGranted === []) {
+		// A limit narrows what something else allows; ticked alone, it has nothing to narrow.
+		$aLimits = Grades::Usable($oResource->aLimits, $aOffered);
+		$aLimitScopes = array_merge([], ...array_column($aLimits, 'scopes'));
+		if ($oResource->oScopes->Granted($aOffered, array_diff($aTicked, $aLimitScopes)) === []) {
 			throw new PageException('UI:AltiooOAuthServer:Page:NothingSelected');
 		}
+		foreach ((array) ($_POST['limits'] ?? []) as $sLimit) {
+			if (is_string($sLimit) && ctype_digit($sLimit) && isset($aLimits[(int) $sLimit])) {
+				$aTicked = array_merge($aTicked, $aLimits[(int) $sLimit]['scopes']);
+			}
+		}
+		$aGranted = $oResource->oScopes->Granted($aOffered, $aTicked);
 
 		$sSecret = Secret::NewSecret();
 		$oCode = MetaModel::NewObject(AltiooOAuthCode::class, [
@@ -243,7 +252,8 @@ final class AuthorizationController
 			}
 			$aPreselected = [];
 		}
-		$aExtras = Grades::Uncovered($aGrades, $aOffered);
+		$aLimits = Grades::Usable($oResource->aLimits, $aOffered);
+		$aExtras = Grades::Uncovered(array_merge($aGrades, $aLimits), $aOffered);
 		if ($aGrades !== [] && $aExtras !== []) {
 			$sScopes .= '<p class="note">'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Consent:Also')).'</p>';
 		}
@@ -251,6 +261,14 @@ final class AuthorizationController
 			$sChecked = in_array($sScope, $aPreselected, true) ? ' checked' : '';
 			$sScopes .= '<label><input type="checkbox" name="scopes[]" value="'.Http::Escape($sScope).'"'.$sChecked.'> '
 				.Http::Escape(self::ScopeLabel($sScope)).'</label>';
+		}
+		// Unticked: each one is less than the person chose above, never more.
+		if ($aLimits !== []) {
+			$sScopes .= '<p class="note">'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Consent:Limits')).'</p>';
+		}
+		foreach ($aLimits as $iIndex => $aLimit) {
+			$sScopes .= '<label><input type="checkbox" name="limits[]" value="'.$iIndex.'"> '
+				.Http::Escape(Dict::S($aLimit['label'])).'</label>';
 		}
 		$aForced = $oResource->oScopes->Forced();
 		$sForced = $aForced === [] ? '' : '<p>'.Http::Escape(Dict::Format('UI:AltiooOAuthServer:Consent:Forced',
@@ -285,6 +303,23 @@ final class AuthorizationController
 		$sLabel = Dict::S('Class:PersonalToken/Attribute:scope/Value:'.$sScope, '');
 
 		return $sLabel === '' ? $sScope : $sLabel;
+	}
+
+	/**
+	 * A connection's scopes in the words the consent page used: its grade and limits, then by
+	 * their own label the scopes neither covers. Scopes of a resource no longer configured keep
+	 * their own labels.
+	 *
+	 * @param list<string> $aScopes
+	 */
+	public static function DescribeScopes(?ProtectedResource $oResource, array $aScopes): string
+	{
+		$aDescribed = Grades::Describe($oResource?->aGrades ?? [], $oResource?->aLimits ?? [], $aScopes);
+
+		return implode(', ', array_merge(
+			array_map(static fn(string $sLabel) => Dict::S($sLabel), $aDescribed['labels']),
+			array_map([self::class, 'ScopeLabel'], $aDescribed['rest'])
+		));
 	}
 
 	/**
