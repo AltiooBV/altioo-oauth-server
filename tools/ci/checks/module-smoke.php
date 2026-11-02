@@ -132,10 +132,10 @@ $fnConnection = static function (array $aValues) use ($oConfidential, $oAdminUse
 };
 
 // Who the history names for a token's deletion: the change that recorded it.
-$fnDeletedBy = static function (int $iToken): ?string {
-	$oSearch = DBObjectSearch::FromOQL("SELECT CMDBChangeOpDelete WHERE objclass = 'PersonalToken' AND objkey = :key");
+$fnDeletedBy = static function (int $iKey, string $sClass = 'PersonalToken'): ?string {
+	$oSearch = DBObjectSearch::FromOQL('SELECT CMDBChangeOpDelete WHERE objclass = :class AND objkey = :key');
 	$oSearch->AllowAllData();
-	$oOp = (new DBObjectSet($oSearch, [], ['key' => $iToken]))->Fetch();
+	$oOp = (new DBObjectSet($oSearch, [], ['class' => $sClass, 'key' => $iKey]))->Fetch();
 	$oChange = $oOp === null ? null : MetaModel::GetObject('CMDBChange', $oOp->Get('change'), false, true);
 
 	return $oChange === null ? null : (string) $oChange->Get('userinfo');
@@ -158,6 +158,17 @@ check('the history names the administrator for a Revoke, not the client', $sRevo
 [$oExpired, $iExpiredToken] = $fnConnection(['expiration_date' => date('Y-m-d H:i:s', time() - 60)]);
 [$oIdle, $iIdleToken] = $fnConnection(['last_refresh_date' => date('Y-m-d H:i:s', time() - 400 * 86400)]);
 [$oLive, $iLiveToken] = $fnConnection([]);
+// A registration nobody used for two days, which the same run deletes after ending the two above.
+$oStale = MetaModel::NewObject('AltiooOAuthClient', [
+	'client_name' => 'Smoke stale registration',
+	'redirect_uris' => json_encode(['https://claude.ai/api/mcp/auth_callback'], JSON_UNESCAPED_SLASHES),
+	'source' => 'dcr',
+	'auth_method' => 'none',
+	'creation_date' => date('Y-m-d H:i:s', time() - 2 * 86400),
+]);
+$oStale->AllowWrite();
+$oStale->DBInsert();
+$iStale = (int) $oStale->GetKey();
 (new CleanUpProcess())->Process(time() + 30);
 foreach ([[$oExpired, $iExpiredToken, 'expired'], [$oIdle, $iIdleToken, 'idle']] as [$oEnded, $iEndedToken, $sReason]) {
 	$oEnded->Reload();
@@ -165,6 +176,8 @@ foreach ([[$oExpired, $iExpiredToken, 'expired'], [$oIdle, $iIdleToken, 'idle']]
 	check("and deletes its token ($sReason)", MetaModel::GetObject('PersonalToken', $iEndedToken, false, true) === null);
 }
 check('the history names the client for what the clean-up ended', $fnDeletedBy($iExpiredToken) === 'OAuth: Smoke confidential client');
+check('the clean-up deletes a registration never used', MetaModel::GetObject('AltiooOAuthClient', $iStale, false, true) === null);
+check('and the history names the clean-up for it, not the last client it ended a connection of', $fnDeletedBy($iStale, 'AltiooOAuthClient') === 'OAuth: hourly clean-up');
 $oLive->Reload();
 check('the clean-up leaves a live connection alone', $oLive->Get('status') === 'active' && MetaModel::GetObject('PersonalToken', $iLiveToken, false, true) !== null);
 

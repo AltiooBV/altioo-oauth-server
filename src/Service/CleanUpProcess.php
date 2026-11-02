@@ -39,8 +39,12 @@ final class CleanUpProcess implements iBackgroundProcess
 	public function Process($iUnixTimeLimit)
 	{
 		$iNow = time();
+		$iEnded = $this->EndPastLifetime($iNow, (int) $iUnixTimeLimit);
+		// Each connection ended above is recorded as its client's; what follows is the clean-up's
+		// own work, and would otherwise carry the name of the last of those clients.
+		PersonalTokens::Track('hourly clean-up');
 		$aCounts = [
-			'ended' => $this->EndPastLifetime($iNow, (int) $iUnixTimeLimit),
+			'ended' => $iEnded,
 			'codes' => $this->DeleteAll("SELECT AltiooOAuthCode WHERE expiration_date < :before",
 				['before' => self::Date($iNow - self::CODE_RETENTION)], (int) $iUnixTimeLimit),
 			'grants' => $this->DeleteAll("SELECT AltiooOAuthGrant WHERE status = 'ended' AND end_date < :before",
