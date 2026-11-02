@@ -25,6 +25,9 @@ use utils;
  *
  * Disconnect posts back to the profile page. The page has already checked the transaction id
  * by then, without spending it; HandlePortalForm spends it, so a replayed post ends nothing.
+ * The form carries the id the page hands its own forms. The template sees only the data given
+ * here, not the page's, so HandlePortalForm, which the page calls first on this same object,
+ * keeps it for GetPortalTabContentTwigs.
  *
  * @since 0.1.0
  */
@@ -32,6 +35,8 @@ final class PortalConnections implements iUserProfileTabExtension, iUserProfileT
 {
 	private const TAB = 'altioo-oauth-server-connections';
 	private const OPERATION = 'altioo_oauth_server_disconnect';
+
+	private string $sTransactionId = '';
 
 	public function IsTabPresent(): bool
 	{
@@ -66,6 +71,7 @@ final class PortalConnections implements iUserProfileTabExtension, iUserProfileT
 	 */
 	public function HandlePortalForm(array &$aData): void
 	{
+		$this->sTransactionId = is_string($aData['sTransactionId'] ?? null) ? $aData['sTransactionId'] : '';
 		if (utils::ReadPostedParam('operation', '', utils::ENUM_SANITIZATION_FILTER_RAW_DATA) !== self::OPERATION) {
 			return;
 		}
@@ -88,6 +94,7 @@ final class PortalConnections implements iUserProfileTabExtension, iUserProfileT
 			MyAccountConnections::Section() + [
 				'tab' => self::TAB,
 				'operation' => self::OPERATION,
+				'transaction_id' => $this->sTransactionId !== '' ? $this->sTransactionId : utils::GetNewTransactionId(),
 			]
 		));
 

@@ -111,7 +111,7 @@
         <entry id="UI:AltiooOAuthServer:Consent:Lifetime" _delta="force"><![CDATA[The connection lasts at most %1$d days, and ends sooner if it is unused for %2$d days.]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Allow" _delta="force"><![CDATA[Allow]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Deny" _delta="force"><![CDATA[Deny]]></entry>
-        <entry id="UI:AltiooOAuthServer:Consent:Disconnect" _delta="force"><![CDATA[You can disconnect it at any time: delete its token under My Account, Personal Tokens.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:Disconnect" _delta="force"><![CDATA[You can disconnect it at any time, under Connected applications: in My Account, Personal Tokens, or in the portal's My profile.]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:RequestExpired" _delta="force"><![CDATA[Connection request expired]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:RequestExpired+" _delta="force"><![CDATA[Start the connection again from the application.]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:UnknownClient" _delta="force"><![CDATA[Unknown application]]></entry>

@@ -111,7 +111,7 @@
         <entry id="UI:AltiooOAuthServer:Consent:Lifetime" _delta="force"><![CDATA[La connexion dure au plus %1$d jours, et se termine plus tôt si elle n'est pas utilisée pendant %2$d jours.]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Allow" _delta="force"><![CDATA[Autoriser]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Deny" _delta="force"><![CDATA[Refuser]]></entry>
-        <entry id="UI:AltiooOAuthServer:Consent:Disconnect" _delta="force"><![CDATA[Vous pouvez la déconnecter à tout moment : supprimez son jeton dans Mon compte, Jetons personnels.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:Disconnect" _delta="force"><![CDATA[Vous pouvez la déconnecter à tout moment, dans Applications connectées : sous Mon compte, Jetons personnels, ou dans Mon profil sur le portail.]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:RequestExpired" _delta="force"><![CDATA[Demande de connexion expirée]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:RequestExpired+" _delta="force"><![CDATA[Relancez la connexion depuis l'application.]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:UnknownClient" _delta="force"><![CDATA[Application inconnue]]></entry>

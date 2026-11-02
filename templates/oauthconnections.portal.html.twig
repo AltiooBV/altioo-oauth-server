@@ -31,7 +31,7 @@
 										<form method="post">
 											<input type="hidden" name="sTab" value="{{ aData.tab|e('html_attr') }}">
 											<input type="hidden" name="operation" value="{{ aData.operation|e('html_attr') }}">
-											<input type="hidden" name="transaction_id" value="{{ aData.sTransactionId|e('html_attr') }}">
+											<input type="hidden" name="transaction_id" value="{{ aData.transaction_id|e('html_attr') }}">
 											<input type="hidden" name="grant_id" value="{{ aConnection.id|e('html_attr') }}">
 											<button type="submit" class="btn btn-danger btn-sm">{{ aData.disconnect_label|e('html') }}</button>
 										</form>

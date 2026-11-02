@@ -275,6 +275,29 @@ expect "after Disconnect the connection's token is refused" "$(rest_get "$sAcces
 sOut=$(token -d grant_type=refresh_token --data-urlencode "refresh_token=$sRefresh3" -d "client_id=$sClient")
 expect "after Disconnect its current refresh token is invalid_grant" "$sOut" '"error":"invalid_grant"'
 
+# The person disconnects from the portal's My profile, which posts back to its own page with
+# the transaction id that page hands out. The template sees only the tab's own data, so a
+# missing id there is an empty field and a refused post, not an error.
+PORTAL="$BASE/pages/exec.php/user?exec_module=itop-portal-base&exec_page=index.php&portal_id=itop-portal&sTab=altioo-oauth-server-connections"
+sLoc=$(authorize)
+sBack=$(allow "$sLoc" "$(curl -sS -c "$JAR" -b "$JAR" "$sLoc")")
+sCode=$(printf '%s' "$sBack" | sed -n 's/.*[?&]code=\([^&]*\).*/\1/p')
+sTok=$(curl -sS -d grant_type=authorization_code --data-urlencode "code=$sCode" -d "client_id=$sClient" \
+	--data-urlencode "redirect_uri=$CALLBACK" --data-urlencode "code_verifier=$sVerifier" "$ENDPOINT?route=token")
+sProfileAccess=$(printf '%s' "$sTok" | json_field access_token)
+sProfileGrant=$(printf '%s' "$sTok" | json_field refresh_token)
+sProfileGrant=${sProfileGrant%%.*}
+sPage=$(curl -sS -c "$JAR" -b "$JAR" "$PORTAL")
+expect "My profile lists the connection" "$sPage" "name=\"grant_id\" value=\"$sProfileGrant\""
+sTransaction=$(printf '%s' "$sPage" | sed -n 's/.*name="transaction_id" value="\([^"]*\)".*/\1/p' | head -1)
+[ -n "$sTransaction" ] || { rm -f "$JAR"; fail "My profile's Disconnect carries no transaction id"; }
+echo "   ok  My profile's Disconnect carries a transaction id"
+sOut=$(curl -sS -c "$JAR" -b "$JAR" --data-urlencode sTab=altioo-oauth-server-connections \
+	--data-urlencode operation=altioo_oauth_server_disconnect --data-urlencode "transaction_id=$sTransaction" \
+	--data-urlencode "grant_id=$sProfileGrant" "$PORTAL")
+expect "My profile says the connection is ended" "$sOut" 'Smoke is disconnected'
+expect "after My profile's Disconnect the connection's token is refused" "$(rest_get "$sProfileAccess")" '"code":1'
+
 # A connection made 200 days ago, its stored end still ahead: today's max_grant_days ends it.
 sOut=$(token -u "$sCcId:$sCcSecret" -d grant_type=refresh_token --data-urlencode "refresh_token=$sOldRefresh")
 expect "a lower max_grant_days ends a connection made before it" "$sOut" '"error":"invalid_grant","error_description":"the connection has expired"'
