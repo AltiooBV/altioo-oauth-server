@@ -106,6 +106,7 @@ sConsent=$(curl -sS -c "$JAR" -b "$JAR" --data-urlencode loginop=login \
 	--data-urlencode "auth_user=$ITOP_ADMIN_USER" --data-urlencode "auth_pwd=$ITOP_ADMIN_PWD" "$sLoc")
 expect "the consent page shows where it returns" "$sConsent" 'claude.ai'
 expect "the consent page names the resource in words" "$sConsent" 'REST/JSON API'
+expect "and gives its address, which the token is held to" "$sConsent" "$REST"
 sBack=$(allow "$sLoc" "$sConsent")
 expect "consent returns to the client with a code" "$sBack" "$CALLBACK?code="
 expect "consent returns the state" "$sBack" '&state=smoke&'

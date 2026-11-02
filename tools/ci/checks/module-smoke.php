@@ -19,6 +19,7 @@ use Altioo\iTop\Extension\OAuthServer\Config;
 use Altioo\iTop\Extension\OAuthServer\Hook\MyAccountConnections;
 use Altioo\iTop\Extension\OAuthServer\Hook\PortalConnections;
 use Altioo\iTop\Extension\OAuthServer\Service\CleanUpProcess;
+use Altioo\iTop\Extension\OAuthServer\TokenAudience;
 use Combodo\iTop\MyAccount\Hook\iMyAccountTabContentExtension;
 use Combodo\iTop\Portal\Hook\iUserProfileTabContentExtension;
 use Combodo\iTop\Portal\Hook\iUserProfileTabExtension;
@@ -180,6 +181,26 @@ check('the clean-up deletes a registration never used', MetaModel::GetObject('Al
 check('and the history names the clean-up for it, not the last client it ended a connection of', $fnDeletedBy($iStale, 'AltiooOAuthClient') === 'OAuth: hourly clean-up');
 $oLive->Reload();
 check('the clean-up leaves a live connection alone', $oLive->Get('status') === 'active' && MetaModel::GetObject('PersonalToken', $iLiveToken, false, true) !== null);
+
+// What a protected resource asks before serving a call: which resource the token was granted
+// for (TokenAudience), held to the URL exactly.
+$sRestUrl = $aResources['rest']->sUrl;
+$oAudience = TokenAudience::Of($iLiveToken);
+check('a connection\'s token has its resource as audience', $oAudience !== null && $oAudience->sResourceKey === 'rest' && $oAudience->IsFor($sRestUrl));
+check('and it is not for another URL of the same endpoint', $oAudience !== null && !$oAudience->IsFor($sRestUrl.'?portal_id=1'));
+check('a revoked connection\'s token has none', TokenAudience::Of($iToken) === null);
+[$oLoose] = Altioo\iTop\Extension\OAuthServer\Service\PersonalTokens::Create((int) $oAdminUser->GetKey(), 'Smoke', ['REST/JSON'], 3600);
+check('a token no connection owns has none', TokenAudience::Of((int) $oLoose->GetKey()) === null);
+$oLoose->AllowDelete();
+$oLoose->DBDelete();
+[$oRemoved, $iRemovedToken] = $fnConnection(['resource' => 'smoke-removed']);
+$oAudience = TokenAudience::Of($iRemovedToken);
+check('a token for a resource no longer configured is for no URL', $oAudience !== null && $oAudience->sResourceKey === 'smoke-removed' && $oAudience->sResourceUrl === '' && !$oAudience->IsFor($sRestUrl));
+
+// The console names a connection's resource as the consent page did, with its key.
+check('the console shows a connection\'s resource by its label', $oLive->GetAsHTML('resource') === utils::EscapeHtml(Dict::S('UI:AltiooOAuthServer:Resource:REST').' (rest)'));
+check('and by its key when it is no longer configured', $oRemoved->GetAsHTML('resource') === 'smoke-removed');
+Altioo\iTop\Extension\OAuthServer\Service\Grants::End($oRemoved, 'revoked');
 
 // The person deleted the connection's token under My Account: Connected applications must not
 // still list the connection as active.
