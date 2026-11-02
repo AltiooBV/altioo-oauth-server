@@ -174,6 +174,8 @@
         <entry id="UI:AltiooOAuthServer:Consent:OnlyYours" _delta="force"><![CDATA[Allow only if you started this connection yourself, just now. If someone sent you this link, deny.]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:ResourceNotAllowed" _delta="force"><![CDATA[Not available for your account]]></entry>
         <entry id="UI:AltiooOAuthServer:Page:ResourceNotAllowed+" _delta="force"><![CDATA[Your profiles do not give access to what this application asks for, so every call it made would be refused. Ask your iTop administrator.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Resource:MCP" _delta="force"><![CDATA[iTop through altioo-mcp, its MCP server]]></entry>
+        <entry id="UI:AltiooOAuthServer:Resource:REST" _delta="force"><![CDATA[iTop's REST/JSON API]]></entry>
         <entry id="Class:AltiooOAuthGrant/Attribute:console_access" _delta="force"><![CDATA[Console access at consent]]></entry>
         <entry id="Class:AltiooOAuthGrant/Attribute:console_access+" _delta="force"><![CDATA[Whether the account could use the console when it allowed the connection]]></entry>
         <entry id="Class:AltiooOAuthGrant/Attribute:console_access/Value:yes" _delta="force"><![CDATA[Yes]]></entry>

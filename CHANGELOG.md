@@ -27,6 +27,8 @@ tested against claude.ai or any other real client.
   checked before consent, and the grades the consent page offers. Scopes that narrow a
   connection are `limits`, shown under their own heading rather than as something more to
   allow; altioo-mcp's toolsets are not offered by default, and its rehearsal mode is a limit.
+  Each has a name the consent page shows instead of its URL, and its metadata gives the way it
+  reads a token: altioo-mcp the Bearer header, REST/JSON none, since `rest.php` reads its own.
 - A default allowlist of the main MCP clients' web callbacks (Claude, ChatGPT, Cursor, VS
   Code), with entries ending in `/*` for a callback per integration. It is checked at
   registration and again at every authorize, so removing an entry also refuses the clients that

@@ -39,6 +39,7 @@ expect "server metadata takes public and confidential clients" "$sMeta" '"token_
 
 sPrm=$(curl -sS "$ENDPOINT?route=protected-resource&for=rest")
 expect "REST/JSON resource metadata" "$sPrm" "\"resource\":\"$REST\""
+expect "and it names no bearer method, since rest.php reads Auth-Token" "$sPrm" '"bearer_methods_supported":[]'
 sResource=$(printf '%s' "$sPrm" | json_field resource)
 
 sReg=$(curl -sS -w '\n%{http_code}' -X POST -H 'Content-Type: application/json' \
@@ -101,6 +102,7 @@ curl -sS -o /dev/null -c "$JAR" -b "$JAR" "$sLoc"
 sConsent=$(curl -sS -c "$JAR" -b "$JAR" --data-urlencode loginop=login \
 	--data-urlencode "auth_user=$ITOP_ADMIN_USER" --data-urlencode "auth_pwd=$ITOP_ADMIN_PWD" "$sLoc")
 expect "the consent page shows where it returns" "$sConsent" 'claude.ai'
+expect "the consent page names the resource in words" "$sConsent" 'REST/JSON API'
 sBack=$(allow "$sLoc" "$sConsent")
 expect "consent returns to the client with a code" "$sBack" "$CALLBACK?code="
 expect "consent returns the state" "$sBack" '&state=smoke&'

@@ -286,7 +286,7 @@ final class AuthorizationController
 			.'<p><strong>'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Consent:OnlyYours')).'</strong></p>'
 			.'<p>'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Consent:ReturnTo')).'</p>'
 			."<p class=\"host\">$sHost</p>"
-			.'<p>'.Http::Escape(Dict::Format('UI:AltiooOAuthServer:Consent:Resource', $oResource->sUrl)).'</p>'
+			.'<p>'.Http::Escape(Dict::Format('UI:AltiooOAuthServer:Consent:Resource', $oResource->Label())).'</p>'
 			."<form method=\"post\" action=\"$sAction\">"
 			."<input type=\"hidden\" name=\"transaction_id\" value=\"$sTransaction\">"
 			.'<fieldset><legend>'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Consent:Permissions')).'</legend>'.$sScopes.'</fieldset>'

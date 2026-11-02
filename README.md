@@ -262,6 +262,8 @@ In the configuration file, under `$MyModuleSettings['altioo-oauth-server']`.
 'resources' => [
 	'mcp' => [
 		'url' => 'https://itop.example.com/env-production/altioo-mcp/index.php',
+		'label' => 'iTop through altioo-mcp', // what the consent page calls it; empty shows the URL
+		'bearer_methods' => ['header'],       // how it reads a token (RFC 9728); [] if not Authorization: Bearer
 		'scope_prefix' => 'MCP',              // every PersonalToken scope starting with this
 		'default_scopes' => ['MCP-read'],     // pre-ticked on the consent page
 		'offered_scopes' => [],               // empty: the whole family; otherwise only these
@@ -283,7 +285,9 @@ write, delete, `MCP` and `MCP-advisory` scopes as `offered_scopes`; four grades 
 read and change; read, change and delete; everything); and one limit, `MCP-advisory`, worded
 as "only propose changes, never make them". For REST/JSON, the *REST Services User* profile
 when `rest.php` requires it (`secure_rest_services` on and `allow_rest_services_via_tokens`
-off). A `label` is a dictionary key or plain text.
+off), and no bearer method, since `rest.php` does not read `Authorization: Bearer`. Each
+default has a label in the dictionary. A `label` is a dictionary key or plain text.
+`bearer_methods` is `['header']` when left out.
 
 A scope that restricts a token rather than allowing more, such as altioo-mcp's
 `MCP-toolset-*`, belongs in `limits`. Offered any other way it is a checkbox under "And, if you

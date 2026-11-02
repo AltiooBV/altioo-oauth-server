@@ -23,6 +23,11 @@ final class ProtectedResource
 	 *     offers as one radio button each, instead of a checkbox per scope
 	 * @param list<array{label: string, scopes: list<string>}> $aLimits choices that narrow what
 	 *     the chosen grade allows, offered as a checkbox each under their own heading
+	 * @param string $sLabel what the consent page calls the resource, a dictionary key or plain
+	 *     text; empty shows its URL
+	 * @param list<string> $aBearerMethods how the resource reads a token, as RFC 9728 names it:
+	 *     "header" for RFC 6750's Authorization: Bearer; empty for a resource that reads it some
+	 *     other way, so that no client is told to send what it will refuse
 	 */
 	public function __construct(
 		public readonly string $sKey,
@@ -30,9 +35,19 @@ final class ProtectedResource
 		public readonly ScopePolicy $oScopes,
 		public readonly array $aRequiredProfiles = [],
 		public readonly array $aGrades = [],
-		public readonly array $aLimits = []
+		public readonly array $aLimits = [],
+		public readonly string $sLabel = '',
+		public readonly array $aBearerMethods = ['header']
 	)
 	{
+	}
+
+	/**
+	 * The resource in words a person knows, or its URL when it has no label.
+	 */
+	public function Label(): string
+	{
+		return $this->sLabel === '' ? $this->sUrl : \Dict::S($this->sLabel);
 	}
 
 	/**

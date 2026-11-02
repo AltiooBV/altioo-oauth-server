@@ -142,7 +142,10 @@ final class Config
 				),
 				self::StringList($aResource['required_profiles'] ?? []),
 				self::Choices($aResource['grades'] ?? []),
-				self::Choices($aResource['limits'] ?? [])
+				self::Choices($aResource['limits'] ?? []),
+				is_string($aResource['label'] ?? null) ? $aResource['label'] : '',
+				// Most resources read RFC 6750's Bearer header; one that does not says so.
+				array_key_exists('bearer_methods', $aResource) ? self::StringList($aResource['bearer_methods']) : ['header']
 			);
 		}
 
@@ -168,6 +171,7 @@ final class Config
 		return [
 			'mcp' => [
 				'url' => rtrim(utils::GetAbsoluteUrlModulesRoot(), '/').'/altioo-mcp/index.php',
+				'label' => 'UI:AltiooOAuthServer:Resource:MCP',
 				'scope_prefix' => 'MCP',
 				// Not the MCP-toolset-* scopes: each one restricts a token to its toolset, which
 				// a person deciding what to allow has no reason to know. An administrator who
@@ -187,7 +191,11 @@ final class Config
 			],
 			'rest' => [
 				'url' => utils::GetAbsoluteUrlAppRoot().'webservices/rest.php',
+				'label' => 'UI:AltiooOAuthServer:Resource:REST',
 				'scope_prefix' => 'REST/JSON',
+				// authent-token reads Auth-Token or auth_token, never Authorization: Bearer
+				// (doc/adr/0003-generic-from-the-first-release.md).
+				'bearer_methods' => [],
 				// rest.php's own rule (webservices/rest.php, authent-token's AbstractPersonalToken).
 				'required_profiles' => MetaModel::GetConfig()->Get('secure_rest_services') && !MetaModel::GetConfig()->Get('allow_rest_services_via_tokens')
 					? ['REST Services User']

@@ -63,7 +63,7 @@ final class MetadataController
 			'resource' => $oResource->sUrl,
 			'authorization_servers' => [Config::Issuer()],
 			'scopes_supported' => array_values(array_unique(array_merge($oResource->oScopes->Offered([]), $oResource->oScopes->Forced()))),
-			'bearer_methods_supported' => ['header'],
+			'bearer_methods_supported' => $oResource->aBearerMethods,
 		], Http::CACHE_DISCOVERY);
 	}
 }
