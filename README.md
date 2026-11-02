@@ -97,7 +97,9 @@ callback URL:
 
 A client created this way skips the `redirect_uris` allowlist: the administrator who created it
 is the allowlist. Clients that register through a client ID metadata document (CIMD) are not
-supported yet.
+supported yet, although the MCP specification's latest revision prefers them to dynamic
+registration, which it keeps for backwards compatibility. A client that offers only CIMD cannot
+connect itself here ([ADR 0005](doc/adr/0005-no-client-id-metadata-documents-in-0-1.md)).
 
 ## How a connection is made
 

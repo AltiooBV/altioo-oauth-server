@@ -38,6 +38,9 @@ Each line points at its record in `doc/adr/`. Read the record before arguing wit
   REST/JSON, and no code path is specific to altioo-mcp (ADR 0003).
 - A grant owns one `PersonalToken`, and a refresh renews its value in place. Never create a new
   row per refresh (ADR 0004).
+- Clients register dynamically or are created by an administrator; 0.1.0 has no client ID
+  metadata documents and never advertises them. Adding them is a design change, not a fix
+  (ADR 0005).
 
 ## 4. If your harness has its own instruction file
 
