@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Altioo\iTop\Extension\OAuthServer\Service;
 
+use Altioo\iTop\Extension\OAuthServer\Config;
 use Altioo\iTop\Extension\OAuthServer\Secret;
 use DBObjectSearch;
 use DBObjectSet;
@@ -104,6 +105,18 @@ final class Grants
 		}
 
 		return $aGrants;
+	}
+
+	/**
+	 * The connection's resource in the words the consent page used, or its key when that
+	 * resource is no longer configured.
+	 */
+	public static function ResourceLabel(AltiooOAuthGrant $oGrant): string
+	{
+		$sKey = (string) $oGrant->Get('resource');
+		$oResource = Config::Resources()[$sKey] ?? null;
+
+		return $oResource === null ? $sKey : $oResource->Label();
 	}
 
 	public static function ClientName(AltiooOAuthGrant $oGrant): string

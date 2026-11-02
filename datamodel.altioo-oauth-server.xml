@@ -589,6 +589,23 @@
 		return true;
 	}]]></code>
         </method>
+        <method id="GetAsHTML">
+          <comment>/** The resource by the name the consent page gave it, then its key, as authent-token overrides this for its own token. */</comment>
+          <static>false</static>
+          <access>public</access>
+          <type>Overload-DBObject</type>
+          <code><![CDATA[	public function GetAsHTML($sAttCode, $bLocalize = true)
+	{
+		if ($sAttCode === 'resource') {
+			$sKey = (string) $this->Get('resource');
+			$sLabel = \Altioo\iTop\Extension\OAuthServer\Service\Grants::ResourceLabel($this);
+
+			return utils::EscapeHtml($sLabel === $sKey ? $sKey : "$sLabel ($sKey)");
+		}
+
+		return parent::GetAsHTML($sAttCode, $bLocalize);
+	}]]></code>
+        </method>
         <method id="OnAfterDeleteGrant">
           <comment>/** Deleted rather than revoked, here or with its client: its token goes too (src/Service/Grants.php). */</comment>
           <static>false</static>

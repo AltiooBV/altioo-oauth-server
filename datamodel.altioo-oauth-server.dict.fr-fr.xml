@@ -106,6 +106,7 @@
         <entry id="UI:AltiooOAuthServer:Consent:SelfDeclared" _delta="force"><![CDATA[iTop ne peut pas vérifier ce nom : c'est l'application qui l'a choisi. Vérifiez plutôt où vous serez renvoyé.]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:ReturnTo" _delta="force"><![CDATA[Après votre réponse, vous serez renvoyé vers :]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Resource" _delta="force"><![CDATA[Elle demande l'accès à %1$s.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:ResourceUrl" _delta="force"><![CDATA[Son adresse : %1$s]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Permissions" _delta="force"><![CDATA[Le maximum qu'elle pourra faire : vos propres droits dans iTop s'appliquent toujours, et l'application peut en recevoir moins]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Forced" _delta="force"><![CDATA[Toujours inclus sur cet iTop : %1$s.]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Lifetime" _delta="force"><![CDATA[La connexion dure au plus %1$d jours, et se termine plus tôt si elle n'est pas utilisée pendant %2$d jours.]]></entry>
@@ -140,6 +141,7 @@
         <entry id="UI:AltiooOAuthServer:MyAccount:Intro" _delta="force"><![CDATA[Les applications que vous avez autorisées à agir en votre nom sur cet iTop. En déconnecter une supprime son jeton personnel : elle cesse aussitôt de fonctionner et devra vous redemander l'autorisation.]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:Empty" _delta="force"><![CDATA[Aucune application connectée.]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:Application" _delta="force"><![CDATA[Application]]></entry>
+        <entry id="UI:AltiooOAuthServer:MyAccount:Resource" _delta="force"><![CDATA[Accès à]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:Scopes" _delta="force"><![CDATA[Ce qu'elle peut faire]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:Since" _delta="force"><![CDATA[Connectée le]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:LastUsed" _delta="force"><![CDATA[Dernier renouvellement]]></entry>

@@ -26,6 +26,7 @@
 					{% for aConnection in Section.connections %}
 						<tr>
 							<td>{{ aConnection.client|e('html') }}</td>
+							<td>{{ aConnection.resource|e('html') }}</td>
 							<td>{{ aConnection.scopes|e('html') }}</td>
 							<td>{{ aConnection.since|e('html') }}</td>
 							<td>{{ aConnection.last_used|e('html') }}</td>

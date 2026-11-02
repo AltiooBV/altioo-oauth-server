@@ -106,6 +106,7 @@
         <entry id="UI:AltiooOAuthServer:Consent:SelfDeclared" _delta="force"><![CDATA[iTop cannot check that name: the application chose it. Check where you will be sent back instead.]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:ReturnTo" _delta="force"><![CDATA[When you answer, you will be sent back to:]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Resource" _delta="force"><![CDATA[It asks for access to %1$s.]]></entry>
+        <entry id="UI:AltiooOAuthServer:Consent:ResourceUrl" _delta="force"><![CDATA[Its address: %1$s]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Permissions" _delta="force"><![CDATA[The most it may do: your own rights in iTop still apply, and the application may be given less]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Forced" _delta="force"><![CDATA[Always included on this iTop: %1$s.]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Lifetime" _delta="force"><![CDATA[The connection lasts at most %1$d days, and ends sooner if it is unused for %2$d days.]]></entry>
@@ -140,6 +141,7 @@
         <entry id="UI:AltiooOAuthServer:MyAccount:Intro" _delta="force"><![CDATA[Applications you allowed to act as you on this iTop. Disconnecting one deletes its personal token: it stops working at once and has to ask you again.]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:Empty" _delta="force"><![CDATA[No application is connected.]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:Application" _delta="force"><![CDATA[Application]]></entry>
+        <entry id="UI:AltiooOAuthServer:MyAccount:Resource" _delta="force"><![CDATA[Access to]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:Scopes" _delta="force"><![CDATA[What it may do]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:Since" _delta="force"><![CDATA[Connected]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:LastUsed" _delta="force"><![CDATA[Last renewed]]></entry>

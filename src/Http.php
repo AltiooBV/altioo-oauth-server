@@ -87,6 +87,7 @@ body { font-family: system-ui, sans-serif; line-height: 1.5; max-width: 36rem; m
 h1 { font-size: 1.5rem; }
 .host { font-size: 1.6rem; font-weight: 600; word-break: break-all; }
 .note { color: #52606d; font-size: .9rem; }
+.url { word-break: break-all; }
 fieldset { border: 1px solid #cbd2d9; border-radius: .25rem; margin: 1rem 0; }
 label { display: block; margin: .25rem 0; }
 button { font-size: 1rem; padding: .5rem 1.25rem; margin-right: .5rem; }

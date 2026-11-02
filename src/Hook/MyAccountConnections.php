@@ -83,6 +83,7 @@ final class MyAccountConnections implements iMyAccountTabContentExtension
 			$aConnections[] = [
 				'id' => $oGrant->GetKey(),
 				'client' => Grants::ClientName($oGrant),
+				'resource' => Grants::ResourceLabel($oGrant),
 				'scopes' => AuthorizationController::DescribeScopes($aResources[$oGrant->Get('resource')] ?? null, array_values(array_filter(explode(' ', (string) $oGrant->Get('scope'))))),
 				'since' => AttributeDateTime::GetFormat()->Format($oGrant->Get('creation_date')),
 				'last_used' => AttributeDateTime::GetFormat()->Format($oGrant->Get('last_refresh_date')),
@@ -95,6 +96,7 @@ final class MyAccountConnections implements iMyAccountTabContentExtension
 			'empty' => Dict::S('UI:AltiooOAuthServer:MyAccount:Empty'),
 			'columns' => [
 				Dict::S('UI:AltiooOAuthServer:MyAccount:Application'),
+				Dict::S('UI:AltiooOAuthServer:MyAccount:Resource'),
 				Dict::S('UI:AltiooOAuthServer:MyAccount:Scopes'),
 				Dict::S('UI:AltiooOAuthServer:MyAccount:Since'),
 				Dict::S('UI:AltiooOAuthServer:MyAccount:LastUsed'),
