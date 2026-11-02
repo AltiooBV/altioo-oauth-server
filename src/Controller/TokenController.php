@@ -26,6 +26,7 @@ use AltiooOAuthCode;
 use AltiooOAuthClient;
 use AltiooOAuthGrant;
 use PersonalToken;
+use Throwable;
 use User;
 
 /**
@@ -292,22 +293,36 @@ final class TokenController
 			Grants::End($oGrant, 'disconnected');
 			throw new OAuthException('invalid_grant', 'the connection was ended');
 		}
-		self::ClaimRotation($oGrant);
+		// One transaction from the claim to the last write. Should anything in between fail, the
+		// claim is undone with the rest, rather than leaving an active connection whose stored
+		// hash no refresh token matches, which nothing could renew and nothing would explain.
+		CMDBSource::Query('START TRANSACTION');
+		try {
+			self::ClaimRotation($oGrant);
 
-		$sAccessToken = PersonalTokens::Renew($oToken, (string) $oClient->Get('client_name'), Config::AccessTokenLifetime(), $aScopes);
-		$sNewSecret = Secret::NewSecret();
-		// Always the current one, also when the previous one was presented in the grace period.
-		// Keeping the older one there instead would let whoever presented it take the grant
-		// over: the legitimate client's token would then be neither, and its next refresh an
-		// ordinary refusal rather than a detected reuse.
-		$oGrant->Set('previous_refresh_secret', $oGrant->Get('refresh_secret'));
-		$oGrant->Set('refresh_secret', $sNewSecret);
-		$oGrant->Set('scope', implode(' ', $aScopes));
-		$oGrant->Set('last_refresh_date', date('Y-m-d H:i:s', $iNow));
-		$oGrant->Set('last_refresh_ip', self::ClientIp());
-		$oGrant->AllowWrite();
-		$oGrant->DBUpdate();
-		self::Save($oClient, ['last_used_date' => date('Y-m-d H:i:s', $iNow)]);
+			$sAccessToken = PersonalTokens::Renew($oToken, (string) $oClient->Get('client_name'), Config::AccessTokenLifetime(), $aScopes);
+			$sNewSecret = Secret::NewSecret();
+			// Always the current one, also when the previous one was presented in the grace
+			// period. Keeping the older one there instead would let whoever presented it take the
+			// grant over: the legitimate client's token would then be neither, and its next
+			// refresh an ordinary refusal rather than a detected reuse.
+			$oGrant->Set('previous_refresh_secret', $oGrant->Get('refresh_secret'));
+			$oGrant->Set('refresh_secret', $sNewSecret);
+			$oGrant->Set('scope', implode(' ', $aScopes));
+			$oGrant->Set('last_refresh_date', date('Y-m-d H:i:s', $iNow));
+			$oGrant->Set('last_refresh_ip', self::ClientIp());
+			$oGrant->AllowWrite();
+			$oGrant->DBUpdate();
+			self::Save($oClient, ['last_used_date' => date('Y-m-d H:i:s', $iNow)]);
+			CMDBSource::Query('COMMIT');
+		} catch (Throwable $e) {
+			// A write that failed may have rolled back already, and a ROLLBACK outside any
+			// transaction throws, which would hide why.
+			if (CMDBSource::IsInsideTransaction()) {
+				CMDBSource::Query('ROLLBACK');
+			}
+			throw $e;
+		}
 
 		self::Issued($sAccessToken, Secret::Join((int) $oGrant->GetKey(), $sNewSecret), $aScopes);
 	}
@@ -322,7 +337,13 @@ final class TokenController
 	 *
 	 * The stored hash is what is compared, and a value no password matches what is written: the
 	 * update always changes the row, so the affected-row count answers, even within the second
-	 * of the previous refresh. The rotation's own write replaces it straight after.
+	 * of the previous refresh. The rotation's own write replaces it straight after, in the same
+	 * transaction. Inside it, a concurrent claim waits on the row and then finds the hash
+	 * changed.
+	 *
+	 * The column is AttributeOneWayPassword's "<code>_hash", which is iTop's storage naming
+	 * rather than an API. The HTTP smoke refreshes several times, so a branch that renames it
+	 * fails there.
 	 */
 	private static function ClaimRotation(AltiooOAuthGrant $oGrant): void
 	{
