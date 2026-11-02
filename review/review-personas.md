@@ -43,8 +43,9 @@ release archive.
   resource's scopes, a grade above the admin cap, past the grant's end, or after the person lost
   the right to it?
 - **Open:** how the `resource` parameter fixes the scope family, on `authorize` and again on
-  `token`; the consent POST, for scopes the screen did not offer; the admin caps (`max_grade`,
-  `force_advisory`, `max_grant_days`) applied on the server, not only in the form; what a refresh
+  `token`; the consent POST, for scopes the screen did not offer; the administrator's caps
+  (`offered_scopes`, `forced_scopes`, `max_grant_days`) applied on the server, not only in the
+  form, and on refresh as well as at consent; what a refresh
   re-checks (account enabled, console access, `personal_tokens_allowed_profiles`, the
   resource's profile gate, the current `PersonalToken` still existing); the `expiration_date`
   set on every minted token, so iTop refuses it even if this module is broken or removed; and
