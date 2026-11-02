@@ -127,7 +127,7 @@ a profile in its `mcp_allowed_profiles`, and for a portal account its portal mod
 REST/JSON, the *REST Services User* profile. Otherwise the consent page is replaced by a page
 saying so.
 
-## For a protected resource: which resource a token is for
+## For a protected resource: which resource a token is for, and where its metadata is
 
 authent-token does not know which resource a token was granted for. A resource that is one
 endpoint told apart by a query (one per portal, say) would therefore accept, at one URL, a token
@@ -151,8 +151,21 @@ if (class_exists(TokenAudience::class)) { // this module may not be installed
   removed from `resources` is for no URL.
 - `sResourceKey` is the resource's key in `resources`.
 
-`TokenAudience` is this module's public API (`@api`): its name, `Of()`, `IsFor()` and its two
-properties keep their meaning across minor versions.
+A resource finds the metadata to advertise in its `401` the same way, from the URL it was
+called at, so that a client is sent to consent for that resource and not for another on the same
+endpoint:
+
+```php
+use Altioo\iTop\Extension\OAuthServer\ResourceMetadata;
+
+$sMetadata = class_exists(ResourceMetadata::class) ? ResourceMetadata::UrlFor($sUrlCalled) : null;
+// null: no resource has that URL. Otherwise:
+// WWW-Authenticate: Bearer resource_metadata="$sMetadata"
+```
+
+`TokenAudience` and `ResourceMetadata` are this module's public API (`@api`): their names,
+`Of()`, `IsFor()`, `UrlFor()` and `TokenAudience`'s two properties keep their meaning across
+minor versions.
 
 ## Ending a connection
 
@@ -360,7 +373,7 @@ consent page gives the URL under it too, since the URL, not the label, is what t
 | My Account | A *Connected applications* section under *Personal Tokens* |
 | Portal | A *Connected applications* tab under *My profile*, which posts *Disconnect* back to that page |
 | Endpoints | `env-production/altioo-oauth-server/index.php`, with `route=` `openid-configuration`, `oauth-authorization-server`, `protected-resource`, `register`, `authorize`, `token`, `revoke` and `disconnect`; and the two `.well-known` paths above |
-| PHP API | `TokenAudience`, for a protected resource to ask which resource a token was granted for (above) |
+| PHP API | `TokenAudience` and `ResourceMetadata`, for a protected resource to ask which resource a token was granted for, and where its metadata is (above) |
 | Background process | Hourly: ends connections past their lifetime, deletes spent codes, old ended connections, and clients registered but never used for 24 hours |
 | Profiles | None |
 

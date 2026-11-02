@@ -15,7 +15,10 @@ its resource, so this module answers the question for any resource that asks:
 - `IsFor($sUrl)` compares exactly, as the authorization request's `resource` did. A resource
   since removed from the `resources` setting has no URL, and matches none, so the check fails
   closed.
-- It is generic and names no resource (ADR 0003). It is the module's first `@api` class. A
+- Discovery follows the same URL: `ResourceMetadata::UrlFor($sUrl)` gives the metadata URL of
+  the resource configured with exactly that URL, or `null`, for the resource to advertise in its
+  `401`. A client that called one portal's URL is then sent to consent for that portal.
+- Both are generic and name no resource (ADR 0003). They are the module's `@api` classes. A
   resource that may run without this module installed checks `class_exists()` first.
 
 Rejected: an attribute on `PersonalToken` naming the resource. The connection already holds it,
@@ -23,4 +26,4 @@ and the binding belongs where the consent is (altioo-mcp ADR 0007 rejected it to
 
 Enforced by: `TokenAudienceTest`, and `tools/ci/checks/module-smoke.php` on an installed iTop:
 a live connection's token, a revoked one's, a token no connection owns, and one whose resource
-is no longer configured.
+is no longer configured; and a resource's URL leading to its metadata, another URL to none.

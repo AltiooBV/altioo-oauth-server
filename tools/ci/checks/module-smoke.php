@@ -19,6 +19,7 @@ use Altioo\iTop\Extension\OAuthServer\Config;
 use Altioo\iTop\Extension\OAuthServer\Hook\MyAccountConnections;
 use Altioo\iTop\Extension\OAuthServer\Hook\PortalConnections;
 use Altioo\iTop\Extension\OAuthServer\Service\CleanUpProcess;
+use Altioo\iTop\Extension\OAuthServer\ResourceMetadata;
 use Altioo\iTop\Extension\OAuthServer\TokenAudience;
 use Combodo\iTop\MyAccount\Hook\iMyAccountTabContentExtension;
 use Combodo\iTop\Portal\Hook\iUserProfileTabContentExtension;
@@ -195,6 +196,8 @@ $oLoose->AllowDelete();
 $oLoose->DBDelete();
 [$oRemoved, $iRemovedToken] = $fnConnection(['resource' => 'smoke-removed']);
 $oAudience = TokenAudience::Of($iRemovedToken);
+check('a resource\'s URL leads to its metadata', ResourceMetadata::UrlFor($sRestUrl) === Config::Endpoint('protected-resource', ['for' => 'rest']));
+check('another URL of the same endpoint leads nowhere', ResourceMetadata::UrlFor($sRestUrl.'?portal_id=1') === null);
 check('a token for a resource no longer configured is for no URL', $oAudience !== null && $oAudience->sResourceKey === 'smoke-removed' && $oAudience->sResourceUrl === '' && !$oAudience->IsFor($sRestUrl));
 
 // The console names a connection's resource as the consent page did, with its key.

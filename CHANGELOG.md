@@ -37,7 +37,8 @@ tested against claude.ai or any other real client.
   next refresh when its account gains or loses the console, for consent again.
 - `TokenAudience`, the module's public API: a protected resource asks which resource a token
   was granted for, and can refuse a token granted for another URL. A token no connection owns
-  has no audience.
+  has no audience. `ResourceMetadata::UrlFor()` gives the metadata URL of the resource
+  configured with a URL, for the resource's `401`.
 - A default allowlist of the main MCP clients' web callbacks (Claude, ChatGPT, Cursor, VS
   Code), with entries ending in `/*` for a callback per integration. It is checked at
   registration and again at every authorize, so removing an entry also refuses the clients that
