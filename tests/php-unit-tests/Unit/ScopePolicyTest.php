@@ -83,4 +83,19 @@ final class ScopePolicyTest extends TestCase
 		$this->assertSame([], $oPolicy->Current(['MCP-write', 'MCP-advisory'], ['MCP-advisory']));
 		$this->assertSame(['MCP-read', 'MCP-advisory'], $oPolicy->Current(['MCP-read', 'MCP-advisory'], ['MCP-advisory']));
 	}
+
+	public function testWithinNarrowsTheOfferAndWhatAGrantKeeps(): void
+	{
+		$oPolicy = (new ScopePolicy(self::FAMILY, ['MCP-read', 'MCP-write', 'MCP-delete', 'MCP']))->Within(['MCP-read', 'MCP']);
+		$this->assertSame(['MCP', 'MCP-read'], $oPolicy->Offered([]));
+		$this->assertSame([], $oPolicy->Current(['MCP-write', 'MCP-delete']));
+		$this->assertSame(['MCP'], $oPolicy->Current(['MCP']));
+	}
+
+	/** An empty $aOffered means the whole family; an empty Within means nothing at all. */
+	public function testWithinNothingOffersNothing(): void
+	{
+		$this->assertSame([], (new ScopePolicy(self::FAMILY))->Within([])->Offered([]));
+		$this->assertSame([], (new ScopePolicy(self::FAMILY, ['MCP-read']))->Within(['MCP'])->Offered([]));
+	}
 }
