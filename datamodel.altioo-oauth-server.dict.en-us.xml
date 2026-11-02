@@ -133,7 +133,7 @@
         <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:withdrawn" _delta="force"><![CDATA[Disconnected by the user]]></entry>
         <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:withdrawn+" _delta="force"><![CDATA[Ended from Connected applications, under My Account or the portal's My profile]]></entry>
         <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:client_revoked" _delta="force"><![CDATA[Ended by the application]]></entry>
-        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:client_revoked+" _delta="force"><![CDATA[The application revoked its refresh token, as when it signs out or is removed]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:client_revoked+" _delta="force"><![CDATA[The application revoked its refresh or access token, as when it signs out or is removed]]></entry>
         <entry id="Class:AltiooOAuthGrant/Stimulus:ev_revoke" _delta="force"><![CDATA[Revoke]]></entry>
         <entry id="Class:AltiooOAuthGrant/Stimulus:ev_revoke+" _delta="force"><![CDATA[End this connection now and delete its personal token]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:Title" _delta="force"><![CDATA[Connected applications]]></entry>

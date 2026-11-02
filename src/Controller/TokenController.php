@@ -18,10 +18,14 @@ use Altioo\iTop\Extension\OAuthServer\Service\Accounts;
 use Altioo\iTop\Extension\OAuthServer\Service\Grants;
 use Altioo\iTop\Extension\OAuthServer\Service\PersonalTokens;
 use CMDBSource;
+use Combodo\iTop\AuthentToken\Service\AuthentTokenService;
+use DBObjectSearch;
+use DBObjectSet;
 use MetaModel;
 use AltiooOAuthCode;
 use AltiooOAuthClient;
 use AltiooOAuthGrant;
+use PersonalToken;
 use User;
 
 /**
@@ -51,9 +55,11 @@ final class TokenController
 	}
 
 	/**
-	 * Revocation (RFC 7009), for a client signing out or being removed: presenting a refresh
-	 * token ends its connection, which deletes the access token too. Only refresh tokens: an
-	 * access token is a PersonalToken, which authent-token alone knows how to read back.
+	 * Revocation (RFC 7009), for a client signing out or being removed: presenting either of a
+	 * connection's tokens ends the connection, which deletes the access token and voids the
+	 * refresh token. The two cannot be mistaken for each other, so the hint is not needed to
+	 * find which was sent: a refresh token is "<grant key>.<secret>", an access token is
+	 * authent-token's encrypted value, which holds no dot.
 	 *
 	 * A token that is unknown, already ended, or another client's is answered as a revoked one
 	 * and left as it is: the RFC asks no error for an invalid token, since the client could do
@@ -69,19 +75,50 @@ final class TokenController
 		if ($sToken === '') {
 			throw new OAuthException('invalid_request', 'token is missing');
 		}
-		if (self::Posted('token_type_hint') === 'access_token') {
-			throw new OAuthException('unsupported_token_type', 'revoke the refresh token: that ends its access token too');
-		}
 		$aParts = Secret::Split($sToken);
-		$oGrant = $aParts === null ? null : MetaModel::GetObject(AltiooOAuthGrant::class, $aParts[0], false, true);
-		// Ownership before the secret, as for a code: CheckPassword is a bcrypt comparison.
-		if ($oGrant instanceof AltiooOAuthGrant && $oGrant->Get('status') === 'active'
-			&& (int) $oGrant->Get('client_id') === (int) $oClient->GetKey()
-			&& ($oGrant->Get('refresh_secret')->CheckPassword($aParts[1]) || $oGrant->Get('previous_refresh_secret')->CheckPassword($aParts[1]))) {
+		$oGrant = $aParts === null ? self::GrantOfAccessToken($oClient, $sToken) : self::GrantOfRefreshToken($oClient, $aParts);
+		if ($oGrant !== null) {
 			Grants::End($oGrant, 'client_revoked');
 		}
 
 		Http::Json(200, []);
+	}
+
+	/**
+	 * Ownership before the secret, as for a code: CheckPassword is a bcrypt comparison.
+	 *
+	 * @param array{0: int, 1: string} $aParts
+	 */
+	private static function GrantOfRefreshToken(AltiooOAuthClient $oClient, array $aParts): ?AltiooOAuthGrant
+	{
+		$oGrant = MetaModel::GetObject(AltiooOAuthGrant::class, $aParts[0], false, true);
+		if (!$oGrant instanceof AltiooOAuthGrant || $oGrant->Get('status') !== 'active'
+			|| (int) $oGrant->Get('client_id') !== (int) $oClient->GetKey()) {
+			return null;
+		}
+
+		return $oGrant->Get('refresh_secret')->CheckPassword($aParts[1]) || $oGrant->Get('previous_refresh_secret')->CheckPassword($aParts[1]) ? $oGrant : null;
+	}
+
+	/**
+	 * The value names its PersonalToken once decrypted, which costs no hash; the grant that owns
+	 * that token is then looked up for this client, and only then is the value checked against
+	 * the token's stored hash, so that a value it no longer has ends nothing.
+	 */
+	private static function GrantOfAccessToken(AltiooOAuthClient $oClient, string $sToken): ?AltiooOAuthGrant
+	{
+		$oToken = (new AuthentTokenService())->DecryptToken($sToken);
+		if (!$oToken instanceof PersonalToken) {
+			return null;
+		}
+		$oSearch = DBObjectSearch::FromOQL("SELECT AltiooOAuthGrant WHERE personal_token_id = :token AND client_id = :client AND status = 'active'");
+		$oSearch->AllowAllData();
+		$oGrant = (new DBObjectSet($oSearch, [], ['token' => (int) $oToken->GetKey(), 'client' => (int) $oClient->GetKey()]))->Fetch();
+		if (!$oGrant instanceof AltiooOAuthGrant) {
+			return null;
+		}
+
+		return $oToken->Get('auth_token')->CheckPassword($sToken) ? $oGrant : null;
 	}
 
 	/**

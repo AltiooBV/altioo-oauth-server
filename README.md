@@ -127,11 +127,9 @@ saying so.
 
 ## Ending a connection
 
-- **The application**, when it signs out or is removed, if it revokes its refresh token
-  (RFC 7009) at `route=revoke`, which the server metadata advertises. The connection ends
-  with the reason *Ended by the application*. Only refresh tokens are revoked there; an
-  access token is answered `unsupported_token_type`, since revoking its refresh token ends it
-  too.
+- **The application**, when it signs out or is removed, if it revokes its refresh token or
+  its access token (RFC 7009) at `route=revoke`, which the server metadata advertises. Either
+  ends the whole connection, with the reason *Ended by the application*.
 - **The person**, under *My Account*, *Personal Tokens*. The *Connected applications* section
   lists each connection with *Disconnect*. Deleting the connection's token in the list below it
   ends the connection too. In the portal, the same list is the *Connected applications* tab of

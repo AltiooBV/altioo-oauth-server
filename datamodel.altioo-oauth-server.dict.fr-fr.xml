@@ -133,7 +133,7 @@
         <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:withdrawn" _delta="force"><![CDATA[Déconnectée par l'utilisateur]]></entry>
         <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:withdrawn+" _delta="force"><![CDATA[Terminée depuis Applications connectées, dans Mon compte ou dans Mon profil du portail]]></entry>
         <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:client_revoked" _delta="force"><![CDATA[Terminée par l'application]]></entry>
-        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:client_revoked+" _delta="force"><![CDATA[L'application a révoqué son jeton de rafraîchissement, par exemple en se déconnectant ou en étant retirée]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:client_revoked+" _delta="force"><![CDATA[L'application a révoqué son jeton de rafraîchissement ou d'accès, par exemple en se déconnectant ou en étant retirée]]></entry>
         <entry id="Class:AltiooOAuthGrant/Stimulus:ev_revoke" _delta="force"><![CDATA[Révoquer]]></entry>
         <entry id="Class:AltiooOAuthGrant/Stimulus:ev_revoke+" _delta="force"><![CDATA[Terminer cette connexion maintenant et supprimer son jeton personnel]]></entry>
         <entry id="UI:AltiooOAuthServer:MyAccount:Title" _delta="force"><![CDATA[Applications connectées]]></entry>

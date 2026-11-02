@@ -211,14 +211,29 @@ expect "the server metadata names the revocation endpoint" "$sMeta" '"revocation
 sOut=$(revoke -d "client_id=$sClient2" --data-urlencode "token=$sRevRefresh")
 expect "another client's refresh token is answered as revoked" "$sOut" '200'
 expect "and its connection is left as it is" "$(rest_get "$sRevAccess")" '"code":0'
-sOut=$(revoke -d "client_id=$sClient" --data-urlencode "token=$sRevAccess" -d token_type_hint=access_token)
-expect "an access token is not revoked on its own" "$sOut" '"error":"unsupported_token_type"'
+sOut=$(revoke -d "client_id=$sClient2" --data-urlencode "token=$sRevAccess")
+expect "another client's access token is answered as revoked" "$sOut" '200'
+expect "and its connection is left as it is, too" "$(rest_get "$sRevAccess")" '"code":0'
 sOut=$(revoke -d "client_id=$sClient" --data-urlencode "token=$sRevRefresh")
 expect "revoking a refresh token answers 200" "$sOut" '200'
 expect "revoking it ends its access token too" "$(rest_get "$sRevAccess")" '"code":1'
 sOut=$(token -d grant_type=refresh_token --data-urlencode "refresh_token=$sRevRefresh" -d "client_id=$sClient")
 expect "a revoked refresh token is invalid_grant" "$sOut" '"error":"invalid_grant"'
 expect "revoking it again still answers 200" "$(revoke -d "client_id=$sClient" --data-urlencode "token=$sRevRefresh")" '200'
+
+# A client may revoke the access token instead, with no hint: that ends the connection too.
+sLoc=$(authorize)
+sBack=$(allow "$sLoc" "$(curl -sS -c "$JAR" -b "$JAR" "$sLoc")")
+sCode=$(printf '%s' "$sBack" | sed -n 's/.*[?&]code=\([^&]*\).*/\1/p')
+sTok=$(curl -sS -d grant_type=authorization_code --data-urlencode "code=$sCode" -d "client_id=$sClient" \
+	--data-urlencode "redirect_uri=$CALLBACK" --data-urlencode "code_verifier=$sVerifier" "$ENDPOINT?route=token")
+sRevAccess=$(printf '%s' "$sTok" | json_field access_token)
+sRevRefresh=$(printf '%s' "$sTok" | json_field refresh_token)
+sOut=$(revoke -d "client_id=$sClient" --data-urlencode "token=$sRevAccess")
+expect "revoking an access token without a hint answers 200" "$sOut" '200'
+expect "and the access token is refused" "$(rest_get "$sRevAccess")" '"code":1'
+sOut=$(token -d grant_type=refresh_token --data-urlencode "refresh_token=$sRevRefresh" -d "client_id=$sClient")
+expect "and its refresh token is invalid_grant" "$sOut" '"error":"invalid_grant"'
 
 if [ -z "$ITOP_TOKEN" ] || [ "${ITOP_TOKEN#*:}" = "$ITOP_TOKEN" ]; then
 	rm -f "$JAR"
