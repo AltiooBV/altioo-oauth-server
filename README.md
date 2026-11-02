@@ -172,6 +172,7 @@ A lower `max_grant_days` takes effect at each connection's next refresh, at most
 | Network | The client's servers must reach iTop. For Claude, that is Anthropic's addresses. |
 | Cron | iTop's `webservices/cron.php` running, for the hourly clean-up. Without it, a connection past its lifetime keeps its token until its client next tries to refresh. |
 | Web server | Apache with `AllowOverride All` and `mod_rewrite`, for the module's `.htaccess`; or IIS with the URL Rewrite module, for its `web.config` |
+| Client address | Behind a reverse proxy or load balancer, the web server must hand PHP the caller's address: Apache's `mod_remoteip`, nginx's `real_ip` module, or IIS ARR's forwarded address. The module reads `REMOTE_ADDR` and nothing else. Otherwise `registration_rate_limit` counts every caller as one address, and the log and the connections name the proxy. |
 | REST/JSON | A person reaches `rest.php` with a token only with `allow_rest_services_via_tokens` set, or the *REST Services User* profile |
 
 ## Installation
