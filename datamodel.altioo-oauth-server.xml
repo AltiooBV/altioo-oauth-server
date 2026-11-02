@@ -913,10 +913,12 @@
       -->
       <unused_registration_limit type="int">1000</unused_registration_limit>
       <!--
-        Origins allowed to read the metadata, registration and token responses
-        from a browser, for browser-based clients such as the MCP Inspector.
-        Empty sends no CORS header at all, which is what Claude, calling from
-        its servers, needs. Never "*".
+        Origins allowed to read the registration, token and revocation
+        responses from a browser, for browser-based clients such as the MCP
+        Inspector. Empty sends no CORS header on those, which is what Claude,
+        calling from its servers, needs. Never "*". The discovery documents are
+        readable from any origin whatever this says: they are public, and sent
+        without credentials (CorsPolicy).
       -->
       <allowed_origins type="array"/>
       <code_lifetime type="int">60</code_lifetime>
