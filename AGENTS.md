@@ -44,6 +44,10 @@ Each line points at its record in `doc/adr/`. Read the record before arguing wit
 - An account with only the portal is offered a resource's `portal_grades` and limits, nothing
   else: for altioo-mcp, read only or everything it may do in its portal. A connection ends when
   its account gains or loses the console (ADR 0006).
+- `TokenAudience` is the generic, `@api` way a resource asks which resource a token was granted
+  for; `null` means no connection owns it, and a removed resource matches no URL (ADR 0007).
+- A resource is named by its `label` wherever a connection appears, and the consent page also
+  gives its URL (ADR 0008).
 
 ## 4. If your harness has its own instruction file
 
