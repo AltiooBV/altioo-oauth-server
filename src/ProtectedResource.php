@@ -28,6 +28,9 @@ final class ProtectedResource
 	 * @param list<string> $aBearerMethods how the resource reads a token, as RFC 9728 names it:
 	 *     "header" for RFC 6750's Authorization: Bearer; empty for a resource that reads it some
 	 *     other way, so that no client is told to send what it will refuse
+	 * @param list<array{label: string, scopes: list<string>}> $aPortalGrades the grades an
+	 *     account without the console is offered instead, and nothing else but the limits;
+	 *     empty offers it the same as any account
 	 */
 	public function __construct(
 		public readonly string $sKey,
@@ -37,9 +40,27 @@ final class ProtectedResource
 		public readonly array $aGrades = [],
 		public readonly array $aLimits = [],
 		public readonly string $sLabel = '',
-		public readonly array $aBearerMethods = ['header']
+		public readonly array $aBearerMethods = ['header'],
+		public readonly array $aPortalGrades = []
 	)
 	{
+	}
+
+	/**
+	 * The resource as offered to an account with or without the console. Without it, and when
+	 * the resource has portal grades, only those grades and the limits are offered: what a
+	 * portal account may do under each is the resource's to apply, call by call, from the
+	 * account's profiles and portal.
+	 */
+	public function ForAccount(bool $bConsole): self
+	{
+		if ($bConsole || $this->aPortalGrades === []) {
+			return $this;
+		}
+		$aScopes = array_merge($this->LimitScopes(), ...array_column($this->aPortalGrades, 'scopes'));
+
+		return new self($this->sKey, $this->sUrl, $this->oScopes->Within(array_values(array_unique($aScopes))),
+			$this->aRequiredProfiles, $this->aPortalGrades, $this->aLimits, $this->sLabel, $this->aBearerMethods, $this->aPortalGrades);
 	}
 
 	/**

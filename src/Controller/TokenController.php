@@ -271,14 +271,17 @@ final class TokenController
 			Grants::End($oGrant, 'account');
 			throw new OAuthException('invalid_grant', 'this account can no longer be connected');
 		}
-		// Allowed as a portal account, and the account has since been given the console: the
-		// person consented to a portal connection, and what the resource now serves it under the
-		// same grade is the console's. Consent again. Other profile changes need none: the
-		// resource reads the account's profiles on every call.
-		if ($oGrant->Get('console_access') === 'no' && Accounts::HasConsole($oUser)) {
+		// Allowed as a portal account and since given the console, or the other way round: the
+		// person consented to one kind of connection, was offered that kind's grades, and what the
+		// resource now serves under the same grade is the other's. Consent again. Other profile
+		// changes need none: the resource reads the account's profiles and portal on every call.
+		$sAccess = (string) $oGrant->Get('console_access');
+		$bConsole = Accounts::HasConsole($oUser);
+		if (Accounts::KindChanged($sAccess, $bConsole)) {
 			Grants::End($oGrant, 'access_changed');
-			throw new OAuthException('invalid_grant', 'the account was given the console; connect again');
+			throw new OAuthException('invalid_grant', $bConsole ? 'the account was given the console; connect again' : 'the account no longer has the console; connect again');
 		}
+		$oResource = $oResource->ForAccount($sAccess !== 'no');
 		// The scopes as today's policy allows them: an administrator who narrows a resource's
 		// offer, or forces a scope, means it for connections already made. A connection left
 		// with nothing but limits ends, as consent refuses one.

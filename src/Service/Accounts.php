@@ -25,4 +25,17 @@ final class Accounts
 	{
 		return (new PortalDispatcher('backoffice'))->IsUserAllowed($oUser);
 	}
+
+	/**
+	 * Whether the account is no longer the kind it was when consent was given, a portal
+	 * account given the console or a console account left with the portal: what the person
+	 * consented to is then not what the resource would serve. Empty is a connection made
+	 * before this was recorded, which never changes kind.
+	 *
+	 * @param string $sRecorded the connection's console_access: "yes", "no" or empty
+	 */
+	public static function KindChanged(string $sRecorded, bool $bConsoleNow): bool
+	{
+		return ($sRecorded === 'no' && $bConsoleNow) || ($sRecorded === 'yes' && !$bConsoleNow);
+	}
 }

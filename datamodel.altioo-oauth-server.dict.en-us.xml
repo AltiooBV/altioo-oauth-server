@@ -170,6 +170,7 @@
         <entry id="UI:AltiooOAuthServer:Grade:Write" _delta="force"><![CDATA[Read and change, never delete]]></entry>
         <entry id="UI:AltiooOAuthServer:Grade:Delete" _delta="force"><![CDATA[Read, change and delete]]></entry>
         <entry id="UI:AltiooOAuthServer:Grade:All" _delta="force"><![CDATA[Everything I can do]]></entry>
+        <entry id="UI:AltiooOAuthServer:Grade:PortalAll" _delta="force"><![CDATA[Everything I can do in my portal]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Also" _delta="force"><![CDATA[And, if you want:]]></entry>
         <entry id="UI:AltiooOAuthServer:Consent:Limits" _delta="force"><![CDATA[You can also limit it:]]></entry>
         <entry id="UI:AltiooOAuthServer:Limit:Advisory" _delta="force"><![CDATA[Only propose changes, never make them]]></entry>
@@ -184,8 +185,8 @@
         <entry id="Class:AltiooOAuthGrant/Attribute:console_access/Value:yes+" _delta="force"><![CDATA[]]></entry>
         <entry id="Class:AltiooOAuthGrant/Attribute:console_access/Value:no" _delta="force"><![CDATA[No, portal only]]></entry>
         <entry id="Class:AltiooOAuthGrant/Attribute:console_access/Value:no+" _delta="force"><![CDATA[]]></entry>
-        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:access_changed" _delta="force"><![CDATA[Account gained console access]]></entry>
-        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:access_changed+" _delta="force"><![CDATA[Allowed as a portal account; a console connection needs consent again]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:access_changed" _delta="force"><![CDATA[Account changed between portal and console]]></entry>
+        <entry id="Class:AltiooOAuthGrant/Attribute:end_reason/Value:access_changed+" _delta="force"><![CDATA[Allowed for one kind of account, portal or console; the other needs consent again]]></entry>
         <entry id="Class:AltiooOAuthCode/Attribute:console_access" _delta="force"><![CDATA[Console access at consent]]></entry>
         <entry id="Class:AltiooOAuthCode/Attribute:console_access+" _delta="force"><![CDATA[]]></entry>
         <entry id="Class:AltiooOAuthCode/Attribute:console_access/Value:yes" _delta="force"><![CDATA[Yes]]></entry>

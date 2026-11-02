@@ -145,7 +145,8 @@ final class Config
 				self::Choices($aResource['limits'] ?? []),
 				is_string($aResource['label'] ?? null) ? $aResource['label'] : '',
 				// Most resources read RFC 6750's Bearer header; one that does not says so.
-				array_key_exists('bearer_methods', $aResource) ? self::StringList($aResource['bearer_methods']) : ['header']
+				array_key_exists('bearer_methods', $aResource) ? self::StringList($aResource['bearer_methods']) : ['header'],
+				self::Choices($aResource['portal_grades'] ?? [])
 			);
 		}
 
@@ -187,6 +188,12 @@ final class Config
 				],
 				'limits' => [
 					['label' => 'UI:AltiooOAuthServer:Limit:Advisory', 'scopes' => ['MCP-advisory']],
+				],
+				// Portal mode serves what the stricter of the account's profiles and its portal
+				// allows, and tells writing from deleting by neither: read, or all of that.
+				'portal_grades' => [
+					['label' => 'UI:AltiooOAuthServer:Grade:Read', 'scopes' => ['MCP-read']],
+					['label' => 'UI:AltiooOAuthServer:Grade:PortalAll', 'scopes' => ['MCP']],
 				],
 			],
 			'rest' => [

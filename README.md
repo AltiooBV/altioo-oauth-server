@@ -169,7 +169,8 @@ properties keep their meaning across minor versions.
   them and deletes their tokens too, but also deletes the record of them that *Revoke* and
   disabling keep.
 - **iTop itself**, when the account is disabled, or no longer allowed personal tokens, or no
-  longer holds a profile the resource requires: the next refresh fails and the connection ends.
+  longer holds a profile the resource requires, or has gained or lost the console since the
+  connection was made: the next refresh fails and the connection ends.
 - **All of one person's connections at once:** *OAuth connections*, search on the user, then
   *Revoke* each; or disable the iTop user, which ends each connection at its next refresh, at
   most `access_token_lifetime` later.
@@ -304,18 +305,33 @@ In the configuration file, under `$MyModuleSettings['altioo-oauth-server']`.
 		'limits' => [                         // unticked checkboxes that narrow the grade chosen
 			['label' => 'Only the tools that read and write objects', 'scopes' => ['MCP-toolset-objects']],
 		],
+		'portal_grades' => [                  // what an account without the console is offered instead
+			['label' => 'UI:AltiooOAuthServer:Grade:Read', 'scopes' => ['MCP-read']],
+			['label' => 'UI:AltiooOAuthServer:Grade:PortalAll', 'scopes' => ['MCP']],
+		],
 	],
 ],
 ```
 
 The defaults: for altioo-mcp, its `mcp_allowed_profiles` as `required_profiles`; the read,
 write, delete, `MCP` and `MCP-advisory` scopes as `offered_scopes`; four grades (read only;
-read and change; read, change and delete; everything); and one limit, `MCP-advisory`, worded
-as "only propose changes, never make them". For REST/JSON, the *REST Services User* profile
+read and change; read, change and delete; everything); for an account without the console,
+two portal grades (read only; everything I can do in my portal); and one limit, `MCP-advisory`,
+worded as "only propose changes, never make them". For REST/JSON, the *REST Services User* profile
 when `rest.php` requires it (`secure_rest_services` on and `allow_rest_services_via_tokens`
 off), and no bearer method, since `rest.php` does not read `Authorization: Bearer`. Each
 default has a label in the dictionary. A `label` is a dictionary key or plain text.
 `bearer_methods` is `['header']` when left out.
+
+`portal_grades`, when set, replaces `grades` for an account that has only the portal, and that
+account is offered nothing else but the `limits`: no checkbox for a scope outside them. It is
+for a resource that tells fewer things apart for such an account. altioo-mcp's portal mode
+serves what the stricter of the account's profiles and its portal allows, and has no delete,
+so the choice there is to read, or to do all of that. What "all" covers then follows the
+account's profiles and portal at every call, with no new consent. A connection is held to the
+kind of account it was made for: one made with the portal only ends at its next refresh once the
+account has the console, and one made with the console ends once the account has only the
+portal. The person then connects again, and is offered that kind's grades.
 
 A scope that restricts a token rather than allowing more, such as altioo-mcp's
 `MCP-toolset-*`, belongs in `limits`. Offered any other way it is a checkbox under "And, if you

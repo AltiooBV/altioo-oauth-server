@@ -21,14 +21,29 @@ final class ScopePolicy
 	 * @param list<string> $aOffered the subset the administrator lets people grant; empty means all
 	 * @param list<string> $aDefault pre-selected on the consent page
 	 * @param list<string> $aForced always added, whatever the person ticks
+	 * @param list<string>|null $aWithin when set, nothing outside it is offered, even if that
+	 *     leaves nothing; null leaves the offer as it is
 	 */
 	public function __construct(
 		private readonly array $aFamily,
 		private readonly array $aOffered = [],
 		private readonly array $aDefault = [],
-		private readonly array $aForced = []
+		private readonly array $aForced = [],
+		private readonly ?array $aWithin = null
 	)
 	{
+	}
+
+	/**
+	 * The same policy, offering only what is also in $aScopes. An empty offer stays empty here,
+	 * where an empty $aOffered would mean the whole family.
+	 *
+	 * @param list<string> $aScopes
+	 */
+	public function Within(array $aScopes): self
+	{
+		return new self($this->aFamily, $this->aOffered, $this->aDefault, $this->aForced,
+			$this->aWithin === null ? $aScopes : array_values(array_intersect($this->aWithin, $aScopes)));
 	}
 
 	/**
@@ -41,6 +56,9 @@ final class ScopePolicy
 	public function Offered(array $aRequested): array
 	{
 		$aOffered = $this->aOffered === [] ? $this->aFamily : array_values(array_intersect($this->aFamily, $this->aOffered));
+		if ($this->aWithin !== null) {
+			$aOffered = array_values(array_intersect($aOffered, $this->aWithin));
+		}
 		$aOffered = array_values(array_diff($aOffered, $this->aForced));
 		$aNarrowed = array_values(array_intersect($aOffered, $aRequested));
 

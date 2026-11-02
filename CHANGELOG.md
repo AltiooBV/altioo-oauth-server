@@ -31,6 +31,10 @@ tested against claude.ai or any other real client.
   *Connected applications* and *OAuth connections* show too; its metadata gives the way it
   reads a token: altioo-mcp the Bearer header, REST/JSON none, since `rest.php` reads its own.
   A resource's URL may carry a query that tells it apart from another, such as one per portal.
+- `portal_grades` per resource: an account with only the portal is offered those grades and
+  the limits, and nothing else. altioo-mcp's default is read only, or everything the account
+  may do in its portal, which its portal mode applies at every call. A connection ends at its
+  next refresh when its account gains or loses the console, for consent again.
 - `TokenAudience`, the module's public API: a protected resource asks which resource a token
   was granted for, and can refuse a token granted for another URL. A token no connection owns
   has no audience.

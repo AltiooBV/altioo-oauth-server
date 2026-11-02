@@ -80,11 +80,12 @@ final class MyAccountConnections implements iMyAccountTabContentExtension
 		$aConnections = [];
 		$aResources = Config::Resources();
 		foreach (Grants::ActiveFor((int) UserRights::GetUserId()) as $oGrant) {
+			$oResource = $aResources[$oGrant->Get('resource')] ?? null;
 			$aConnections[] = [
 				'id' => $oGrant->GetKey(),
 				'client' => Grants::ClientName($oGrant),
 				'resource' => Grants::ResourceLabel($oGrant),
-				'scopes' => AuthorizationController::DescribeScopes($aResources[$oGrant->Get('resource')] ?? null, array_values(array_filter(explode(' ', (string) $oGrant->Get('scope'))))),
+				'scopes' => AuthorizationController::DescribeScopes($oResource?->ForAccount($oGrant->Get('console_access') !== 'no'), array_values(array_filter(explode(' ', (string) $oGrant->Get('scope'))))),
 				'since' => AttributeDateTime::GetFormat()->Format($oGrant->Get('creation_date')),
 				'last_used' => AttributeDateTime::GetFormat()->Format($oGrant->Get('last_refresh_date')),
 			];

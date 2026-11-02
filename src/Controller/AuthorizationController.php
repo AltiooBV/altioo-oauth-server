@@ -86,6 +86,7 @@ final class AuthorizationController
 		if (!$oResource->AllowsUser($oUser)) {
 			throw new PageException('UI:AltiooOAuthServer:Page:ResourceNotAllowed', 403);
 		}
+		$oResource = $oResource->ForAccount(Accounts::HasConsole($oUser));
 		$aAdminOffer = $oResource->oScopes->Offered([]);
 		$aOffered = Grades::WithLimits($oResource->aLimits, Grades::WithNarrower($oResource->aGrades, $oResource->oScopes->Offered($aRequest['scope']), $aAdminOffer), $aAdminOffer);
 
