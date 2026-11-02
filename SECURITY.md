@@ -111,10 +111,11 @@ minutes. Regenerate both with `composer sbom` and `composer licenses`.
 - **What it issues:** access tokens, which are iTop `PersonalToken` objects owned by the person.
   Each has an `expiration_date`, so iTop refuses one past its date even if this module is
   broken or removed. Refresh tokens are rotated on every use.
-- **Who can be a client:** any client that registers itself, as a public client bound by
-  PKCE, if its redirect URIs are on the administrator's allowlist; and clients an
-  administrator creates in the console, which may be confidential, with a secret, and may be
-  allowed to skip PKCE.
+- **Who can be a client:** any client that registers itself, if its redirect URIs are on the
+  administrator's allowlist. It is public, or confidential when it asks for a secret, which it
+  is then issued (Claude does). It is bound by PKCE either way: the secret adds to PKCE, it
+  never replaces it. And clients an administrator creates in the console, which may be
+  confidential, with a secret, and may be allowed to skip PKCE.
 - **What it does not do:** grant any right the person lacks. The token is checked by
   `authent-token` and the resource like any other personal token, and reaches only what that
   user's profiles allow.
@@ -125,7 +126,7 @@ minutes. Regenerate both with `composer sbom` and `composer licenses`.
 |---|---|---|
 | Anyone on the internet | Register a client, send a person a crafted authorize link, call the token endpoint at will | Redirect URIs matched exactly against the administrator's allowlist, at registration and again at every authorize; no redirect before the client and its redirect URI are checked; PKCE S256 required with no plain fallback; codes single-use, short-lived and bound to client, redirect URI and resource; the consent page cannot be framed and its form carries iTop's transaction id |
 | A legitimate client | Ask for more than it was given, keep a token after consent is withdrawn | Scopes fixed by the `resource` parameter and the administrator's caps, enforced on the server; every refresh re-checks the account, its profiles and that the token still exists; reuse of a rotated refresh token ends the grant |
-| Someone holding a confidential client's secret | Exchange that client's codes and refresh its grants | The secret alone gets nothing: a code is issued only after a person signs in and consents, and only to a redirect URI the administrator entered. The secret is stored as a one-way hash; a public client presenting a secret is refused rather than believed |
+| Someone holding a confidential client's secret | Exchange that client's codes and refresh its grants | The secret alone gets nothing: a code is issued only after a person signs in and consents, and only to a redirect URI the administrator entered or allowed, and PKCE binds it besides unless the administrator allowed the client to skip PKCE. The secret is stored as a one-way hash; a public client presenting a secret is refused rather than believed |
 | Someone holding a stolen refresh token | Use it alongside the client | The first of the two to refresh invalidates the other's; reuse ends the grant for both |
 | A person removed from the identity provider whose iTop `User` stays enabled | Keep a connection made before | Grants have a maximum lifetime the administrator sets. The README states that the connection outlives deprovisioning until then, and how to end it sooner. |
 

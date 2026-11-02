@@ -21,7 +21,8 @@
       <properties>
         <comment><![CDATA[/**
  * An OAuth client: registered by itself through dynamic client registration
- * (RFC 7591), always public; or created by an administrator in the console,
+ * (RFC 7591), public, or confidential when it asked for a secret, and always
+ * bound by PKCE; or created by an administrator in the console,
  * usually confidential, with a secret - the "classic" OAuth integration most
  * agent platforms ask to have configured by hand.
  *

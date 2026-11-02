@@ -22,7 +22,8 @@ use MetaModel;
 use AltiooOAuthClient;
 
 /**
- * Dynamic client registration (RFC 7591), for public clients only. Anyone may call it; what
+ * Dynamic client registration (RFC 7591), for public clients and for confidential ones that ask
+ * for a secret, bound by PKCE either way. Anyone may call it; what
  * keeps it from being useful to an attacker is that a client can only ever send people back
  * to an address on the administrator's allowlist.
  *

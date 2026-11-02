@@ -13,8 +13,8 @@ tested against claude.ai or any other real client.
 ### Added
 
 - An OAuth 2.1 authorization server inside iTop: discovery (RFC 8414, RFC 9728) at the
-  issuer's own `.well-known` paths, dynamic client registration (RFC 7591) for public clients
-  (limited per address, while unused registrations past `unused_registration_limit` make room
+  issuer's own `.well-known` paths, dynamic client registration (RFC 7591) for public clients,
+  and for confidential ones that ask for a secret, PKCE required either way (limited per address, while unused registrations past `unused_registration_limit` make room
   rather than refuse anyone),
   authorization through iTop's own login, consent, and a token endpoint for the
   `authorization_code` and `refresh_token` grants with PKCE S256.
