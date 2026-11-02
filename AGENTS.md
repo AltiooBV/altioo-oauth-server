@@ -41,6 +41,9 @@ Each line points at its record in `doc/adr/`. Read the record before arguing wit
 - Clients register dynamically or are created by an administrator; 0.1.0 has no client ID
   metadata documents and never advertises them. Adding them is a design change, not a fix
   (ADR 0005).
+- An account with only the portal is offered a resource's `portal_grades` and limits, nothing
+  else: for altioo-mcp, read only or everything it may do in its portal. A connection ends when
+  its account gains or loses the console (ADR 0006).
 
 ## 4. If your harness has its own instruction file
 
