@@ -27,8 +27,13 @@ tested against claude.ai or any other real client.
   checked before consent, and the grades the consent page offers. Scopes that narrow a
   connection are `limits`, shown under their own heading rather than as something more to
   allow; altioo-mcp's toolsets are not offered by default, and its rehearsal mode is a limit.
-  Each has a name the consent page shows instead of its URL, and its metadata gives the way it
+  Each has a name (`label`) the consent page shows, with its URL below it, and that
+  *Connected applications* and *OAuth connections* show too; its metadata gives the way it
   reads a token: altioo-mcp the Bearer header, REST/JSON none, since `rest.php` reads its own.
+  A resource's URL may carry a query that tells it apart from another, such as one per portal.
+- `TokenAudience`, the module's public API: a protected resource asks which resource a token
+  was granted for, and can refuse a token granted for another URL. A token no connection owns
+  has no audience.
 - A default allowlist of the main MCP clients' web callbacks (Claude, ChatGPT, Cursor, VS
   Code), with entries ending in `/*` for a callback per integration. It is checked at
   registration and again at every authorize, so removing an entry also refuses the clients that

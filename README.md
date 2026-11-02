@@ -127,6 +127,33 @@ a profile in its `mcp_allowed_profiles`, and for a portal account its portal mod
 REST/JSON, the *REST Services User* profile. Otherwise the consent page is replaced by a page
 saying so.
 
+## For a protected resource: which resource a token is for
+
+authent-token does not know which resource a token was granted for. A resource that is one
+endpoint told apart by a query (one per portal, say) would therefore accept, at one URL, a token
+a person granted for the other. The resource can ask this module, and refuse it:
+
+```php
+use Altioo\iTop\Extension\OAuthServer\TokenAudience;
+
+if (class_exists(TokenAudience::class)) { // this module may not be installed
+	$oAudience = TokenAudience::Of($iPersonalTokenId);
+	if ($oAudience !== null && !$oAudience->IsFor($sUrlCalled)) {
+		// Granted for $oAudience->sResourceUrl, not for this URL: refuse the call.
+	}
+}
+```
+
+- `Of()` answers `null` for a token no connection owns, such as one an administrator made by
+  hand. Whether to accept that token is the resource's own rule.
+- `IsFor()` compares exactly, as the authorization request's `resource` did, so build
+  `$sUrlCalled` the way the `resources` setting spells the URL. A token whose resource has been
+  removed from `resources` is for no URL.
+- `sResourceKey` is the resource's key in `resources`.
+
+`TokenAudience` is this module's public API (`@api`): its name, `Of()`, `IsFor()` and its two
+properties keep their meaning across minor versions.
+
 ## Ending a connection
 
 - **The application**, when it signs out or is removed, if it revokes its refresh token or
@@ -263,7 +290,7 @@ In the configuration file, under `$MyModuleSettings['altioo-oauth-server']`.
 'resources' => [
 	'mcp' => [
 		'url' => 'https://itop.example.com/env-production/altioo-mcp/index.php',
-		'label' => 'iTop through altioo-mcp', // what the consent page calls it; empty shows the URL
+		'label' => 'iTop through altioo-mcp', // what the consent page and the connection lists call it; empty shows the URL
 		'bearer_methods' => ['header'],       // how it reads a token (RFC 9728); [] if not Authorization: Bearer
 		'scope_prefix' => 'MCP',              // every PersonalToken scope starting with this
 		'default_scopes' => ['MCP-read'],     // pre-ticked on the consent page
@@ -299,8 +326,14 @@ is told that nothing was selected. Nor is it kept on its own: a connection that 
 offer leaves with nothing but limits ends at its next refresh, since a resource may read a
 token holding only limits as one that names no grade at all.
 
-`url` must be the resource's URL exactly as clients send it. Setting `resources` replaces both
-defaults, so list every resource to keep.
+`url` must be the resource's URL exactly as clients send it. It may carry a query when the
+query is what tells two resources apart (RFC 8707 allows it): altioo-mcp's `?portal_id=`, for
+example, makes each portal a resource of its own, with a key, a `label` naming the portal and
+grades of its own. Setting `resources` replaces both defaults, so list every resource to keep.
+
+The `label` names the resource on the consent page, under *Connected applications* (My Account
+and the portal's *My profile*), and under *OAuth connections*, where its key follows it. The
+consent page gives the URL under it too, since the URL, not the label, is what the token is for.
 
 ## What it adds
 
@@ -311,6 +344,7 @@ defaults, so list every resource to keep.
 | My Account | A *Connected applications* section under *Personal Tokens* |
 | Portal | A *Connected applications* tab under *My profile*, which posts *Disconnect* back to that page |
 | Endpoints | `env-production/altioo-oauth-server/index.php`, with `route=` `openid-configuration`, `oauth-authorization-server`, `protected-resource`, `register`, `authorize`, `token`, `revoke` and `disconnect`; and the two `.well-known` paths above |
+| PHP API | `TokenAudience`, for a protected resource to ask which resource a token was granted for (above) |
 | Background process | Hourly: ends connections past their lifetime, deletes spent codes, old ended connections, and clients registered but never used for 24 hours |
 | Profiles | None |
 
