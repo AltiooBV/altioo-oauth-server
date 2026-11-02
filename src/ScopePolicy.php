@@ -78,14 +78,22 @@ final class ScopePolicy
 
 	/**
 	 * What a grant made earlier may still carry under today's policy: what it was granted that
-	 * is still offered, plus what is forced now.
+	 * is still offered, plus what is forced now. A limit left on its own is no grant, as at
+	 * consent: a resource reads a token holding only scopes that narrow as one that names no
+	 * grade, which may be more than the grade the person chose.
 	 *
 	 * @param list<string> $aGranted
-	 * @return list<string> empty when nothing it was granted is still offered
+	 * @param list<string> $aLimitScopes the scopes of the resource's limits
+	 * @return list<string> empty when nothing it was granted, limits aside, is still offered
 	 */
-	public function Current(array $aGranted): array
+	public function Current(array $aGranted, array $aLimitScopes = []): array
 	{
-		return $this->Granted($this->Offered([]), $aGranted);
+		$aOffered = $this->Offered([]);
+		if ($this->Granted($aOffered, array_values(array_diff($aGranted, $aLimitScopes))) === []) {
+			return [];
+		}
+
+		return $this->Granted($aOffered, $aGranted);
 	}
 
 	/**

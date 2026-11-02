@@ -46,6 +46,17 @@ final class ProtectedResource
 		return $this->aRequiredProfiles === [] || array_intersect($this->aRequiredProfiles, $aProfiles) !== [];
 	}
 
+	/**
+	 * Every scope one of the resource's limits names: scopes that narrow a connection, and are
+	 * never a grant on their own.
+	 *
+	 * @return list<string>
+	 */
+	public function LimitScopes(): array
+	{
+		return array_values(array_unique(array_merge([], ...array_column($this->aLimits, 'scopes'))));
+	}
+
 	public function AllowsUser(\User $oUser): bool
 	{
 		$aProfiles = [];

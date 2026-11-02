@@ -242,8 +242,9 @@ final class TokenController
 			throw new OAuthException('invalid_grant', 'the account was given the console; connect again');
 		}
 		// The scopes as today's policy allows them: an administrator who narrows a resource's
-		// offer, or forces a scope, means it for connections already made.
-		$aScopes = $oResource->oScopes->Current(explode(' ', (string) $oGrant->Get('scope')));
+		// offer, or forces a scope, means it for connections already made. A connection left
+		// with nothing but limits ends, as consent refuses one.
+		$aScopes = $oResource->oScopes->Current(explode(' ', (string) $oGrant->Get('scope')), $oResource->LimitScopes());
 		if ($aScopes === []) {
 			Grants::End($oGrant, 'revoked');
 			throw new OAuthException('invalid_grant', 'nothing granted is offered any more');

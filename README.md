@@ -290,7 +290,9 @@ A scope that restricts a token rather than allowing more, such as altioo-mcp's
 want:", where a person reads it as something more to allow. That is why the default offer
 leaves the toolsets out. A limit is offered whatever the client asks for, since it only ever
 grants less, and it cannot be granted on its own: a person who ticks a limit and nothing else
-is told that nothing was selected.
+is told that nothing was selected. Nor is it kept on its own: a connection that a narrower
+offer leaves with nothing but limits ends at its next refresh, since a resource may read a
+token holding only limits as one that names no grade at all.
 
 `url` must be the resource's URL exactly as clients send it. Setting `resources` replaces both
 defaults, so list every resource to keep.

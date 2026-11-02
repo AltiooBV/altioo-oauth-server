@@ -71,4 +71,16 @@ final class ScopePolicyTest extends TestCase
 	{
 		$this->assertSame([], (new ScopePolicy(self::FAMILY, ['MCP-read'], [], ['MCP-advisory']))->Current(['MCP-write']));
 	}
+
+	/**
+	 * altioo-mcp reads a token holding only a limit as one that names no grade, and serves it
+	 * every grade the instance allows: kept alone, the limit would let a "never delete"
+	 * connection delete.
+	 */
+	public function testAGrantLeftWithOnlyALimitKeepsNothing(): void
+	{
+		$oPolicy = new ScopePolicy(self::FAMILY, ['MCP-read', 'MCP-advisory']);
+		$this->assertSame([], $oPolicy->Current(['MCP-write', 'MCP-advisory'], ['MCP-advisory']));
+		$this->assertSame(['MCP-read', 'MCP-advisory'], $oPolicy->Current(['MCP-read', 'MCP-advisory'], ['MCP-advisory']));
+	}
 }
