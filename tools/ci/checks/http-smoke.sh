@@ -36,6 +36,9 @@ sMeta=$(curl -sS "$ENDPOINT?route=openid-configuration")
 expect "server metadata names its issuer" "$sMeta" "\"issuer\":\"$BASE/env-production/altioo-oauth-server\""
 expect "server metadata requires S256" "$sMeta" '"code_challenge_methods_supported":["S256"]'
 expect "server metadata takes public and confidential clients" "$sMeta" '"token_endpoint_auth_methods_supported":["none","client_secret_basic","client_secret_post"]'
+# ADR 0005: no client ID metadata documents in 0.1.0, so never tell a client to use one.
+case "$sMeta" in *client_id_metadata_document_supported*) rm -f "$JAR"; fail "server metadata advertises client ID metadata documents, which nothing implements (ADR 0005)" ;; esac
+echo "   ok  server metadata does not advertise client ID metadata documents"
 
 sPrm=$(curl -sS "$ENDPOINT?route=protected-resource&for=rest")
 expect "REST/JSON resource metadata" "$sPrm" "\"resource\":\"$REST\""

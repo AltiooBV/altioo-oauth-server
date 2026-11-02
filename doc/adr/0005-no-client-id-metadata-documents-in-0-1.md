@@ -46,5 +46,6 @@ for 1.0, whichever comes first. Whoever builds it starts from these constraints:
 Rejected: CIMD in 0.1.0. That would add an outbound fetch and its SSRF defences to an
 unreleased first increment, for no client that needs it yet.
 
-Enforced by: not machine-checkable as a whole. The one binary part is that server metadata
-does not advertise `client_id_metadata_document_supported` while nothing implements it.
+Enforced by: `tools/ci/checks/http-smoke.sh`, which fails if the server metadata names
+`client_id_metadata_document_supported`. That is the decision's one binary part: the rest,
+which clients still fall back, is not machine-checkable.
