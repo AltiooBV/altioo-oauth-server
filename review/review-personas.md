@@ -77,10 +77,13 @@ release archive.
   such, the return host in large type, each grade in words they know, the default); each refusal
   page (portal-only account, missing profile, `personal_tokens_allowed_profiles`, an expired
   request), for whether it says what to ask the administrator; the `application` label of the
-  minted token as it appears under My Account, Personal Tokens; and that deleting it there ends
-  the connection on the next call and the next refresh.
-- **Blocks:** release when the consent page can mislead or deleting the token does not end the
-  connection; otherwise backlog.
+  minted token as it appears under My Account, Personal Tokens; that deleting it there ends
+  the connection on the next call and the next refresh; and that *Disconnect* works from both
+  *Connected applications* lists, My Account's and the portal's My profile, for each kind of
+  account that can connect.
+- **Blocks:** release when the consent page can mislead, when deleting the token does not end
+  the connection, or when an account that can connect cannot end its connection itself;
+  otherwise backlog.
 
 ### Identity administrator — purple, after the guide's auditor
 
