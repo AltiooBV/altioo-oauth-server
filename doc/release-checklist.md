@@ -52,7 +52,9 @@ not repeat these — *Every release* below is the recurring list.
       as the release gate in the design note says; record what was tested in the changelog.
 - [x] **Complete the README** against the guide's §9.3. 2026-10-28, before any release: check
       it again against what 0.1.0 actually ships, the upgrade procedure in particular.
-- [ ] **Write `doc/security-summary.md`**, the page an approver reads (guide §9.8).
+- [x] **Write `doc/security-summary.md`**, the page an approver reads (guide §9.8).
+      2026-11-02: written for 0.1.0. Its *Who can publish* row is still empty until the
+      publishers are named above; refresh the whole page at every release.
 - [ ] **Start `CHANGELOG.md`** with the first version, in Keep a Changelog format, and give
       SECURITY.md's *Supported versions* its first row, both dated the day of the tag.
 
