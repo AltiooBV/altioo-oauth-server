@@ -2,7 +2,8 @@
 # BASE, ENDPOINT, ALT_ENDPOINT, ITOP_TOKEN and fail() in scope.
 #
 # Plays an OAuth client against the installed module: discovery, registration
-# and what the token and authorize endpoints refuse without anyone signed in.
+# and what the token and authorize endpoints refuse without anyone signed in, among it the
+# registration rate limit, tripped from a loopback address of its own with the limit lowered.
 # With ITOP_ADMIN_USER and ITOP_ADMIN_PWD set it then goes through the whole
 # flow - login, consent, code exchange, a REST call with the minted token,
 # refresh in place (ADR 0004), the refresh grace period, revocation - first as a public
@@ -76,6 +77,50 @@ sOut=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' -G "$ENDPOINT" --
 	--data-urlencode client_id=0123456789abcdef0123456789abcdef --data-urlencode redirect_uri=https://evil.example/cb)
 expect "authorize refuses an unknown client on a page, not a redirect" "$sOut" '400 '
 [ "${sOut#400 }" = "" ] || fail "authorize redirected an unknown client to: ${sOut#400 }"
+
+# The registration rate limit (README: registration_rate_limit, 300 an hour per address). The window
+# is fixed at an hour in RegistrationController and only the count is a setting, so waiting is out
+# and the count is lowered instead: through the instance's config file, put back below, because
+# the instance outlives this script (the integration loop reuses it) and its defaults are checked
+# by module-smoke.php. The caller is a loopback address of this run's own - the whole 127/8 block
+# is local on Linux, and php -S reports the peer's address as REMOTE_ADDR - so neither the
+# registrations above nor an earlier run within the hour count against it, and a second address
+# stands for everybody else.
+RATE_LIMIT=5
+CONF="$ITOP_DIR/conf/$ITOP_ENV/config-itop.php"
+sRateAddr="127.$((RANDOM % 200 + 20)).$((RANDOM % 250 + 1)).$((RANDOM % 250 + 1))"
+sOtherAddr="127.$((RANDOM % 200 + 20)).$((RANDOM % 250 + 1)).$((RANDOM % 250 + 1))"
+register_from() { # <address> -> the headers, then the body, then the status
+	curl -sS -D - -w '\n%{http_code}' --interface "$1" -X POST -H 'Content-Type: application/json' \
+		-d "{\"client_name\":\"RateLimit\",\"redirect_uris\":[\"$CALLBACK\"],\"token_endpoint_auth_method\":\"none\"}" "$ENDPOINT?route=register"
+}
+[ -w "$CONF" ] || chmod u+w "$CONF" 2>/dev/null || true
+cp -p "$CONF" "$CONF.smoke-orig"
+php -r '$s = file_get_contents($argv[1]); $s = preg_replace("/\?>\s*\z/", "", $s);
+	file_put_contents($argv[1], $s."\n\$MyModuleSettings[\"altioo-oauth-server\"][\"registration_rate_limit\"] = ".(int) $argv[2].";\n?>\n");' "$CONF" "$RATE_LIMIT"
+sAccepted=0
+for _ in $(seq 1 "$RATE_LIMIT"); do
+	case "$(register_from "$sRateAddr")" in *$'\n201') sAccepted=$((sAccepted + 1)) ;; esac
+done
+sRefused=$(register_from "$sRateAddr")
+sAgain=$(register_from "$sRateAddr")
+sOther=$(register_from "$sOtherAddr")
+mv -f "$CONF.smoke-orig" "$CONF"
+[ "$sAccepted" -eq "$RATE_LIMIT" ] || { rm -f "$JAR"; fail "only $sAccepted of the first $RATE_LIMIT registrations from one address were accepted"; }
+echo "   ok  $RATE_LIMIT registrations from one address are accepted"
+expect "the one past the limit is a 429" "$sRefused" $'\n429'
+expect "and an OAuth error body, not a page" "$sRefused" '"error":"invalid_request"'
+expect "that says why and what to do" "$sRefused" 'too many registrations from this address; try again later'
+expect "and is never cached" "$sRefused" 'Cache-Control: no-store'
+# RFC 7591 does not ask for it and the controller sends none: said here so that a client author
+# who looks for one is not surprised, and so that adding one later is a conscious change.
+case "$sRefused" in
+	*[Rr]etry-[Aa]fter:*) echo "   ok  the refusal carries a Retry-After" ;;
+	*) echo "   --  the refusal carries no Retry-After: the client is told to try again later, not when" ;;
+esac
+expect "the refusal holds on a second try" "$sAgain" $'\n429'
+expect "while another address registers right after" "$sOther" $'\n201'
+expect "and gets its client" "$sOther" '"client_id"'
 
 if [ -z "${ITOP_ADMIN_USER:-}" ] || [ -z "${ITOP_ADMIN_PWD:-}" ]; then
 	echo "   --  no ITOP_ADMIN_USER / ITOP_ADMIN_PWD: the signed-in flow is not exercised"
