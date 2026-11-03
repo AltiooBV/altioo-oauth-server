@@ -97,6 +97,11 @@ final class PersonalTokens
 		} else {
 			self::Track($sClientName);
 		}
+		// iTop would otherwise ask the signed-in person's own right to delete a PersonalToken,
+		// which only administrators hold. Who may end a connection was decided before this
+		// is called: Grants::Withdraw() checks the grant is theirs, and the other callers are
+		// this module ending it, or an administrator deleting the grant.
+		$oToken->AllowDelete();
 		$oToken->AllowWrite();
 		$oToken->DBDelete();
 	}

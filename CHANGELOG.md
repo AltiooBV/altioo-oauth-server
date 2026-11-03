@@ -54,3 +54,11 @@ tested against claude.ai or any other real client.
 - The discovery documents are readable from any origin, without credentials, so that a
   browser-based client can find the server, and a client may keep them five minutes;
   registration and token answer CORS only for `allowed_origins`, and are never cached.
+
+### Fixed
+
+- **A person without administrator rights could not disconnect an application.** Disconnect from
+  My Account or the portal's My profile deleted the token under the person's own rights, which
+  only administrators hold: the portal showed "You are not allowed to delete this object" and
+  My Account a bare `server_error`, and the grant stayed active. The token is now deleted once
+  the grant is checked to be theirs, and a failure on that route answers with a page.

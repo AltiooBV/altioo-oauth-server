@@ -69,7 +69,8 @@ final class Router
 		} catch (Throwable $e) {
 			// The detail goes to the log only; the message may name a class or a query.
 			IssueLog::Error('Unexpected error on route '.$sRoute.': '.$e->getMessage(), self::LOG_CHANNEL, ['exception' => get_class($e)]);
-			if ($sRoute === 'authorize') {
+			// The routes a person reaches in a browser answer with a page, not a JSON error.
+			if ($sRoute === 'authorize' || $sRoute === 'disconnect') {
 				Http::Page(500, Dict::S('UI:AltiooOAuthServer:Page:Error'), '<p>'.Http::Escape(Dict::S('UI:AltiooOAuthServer:Page:Error+')).'</p>');
 			}
 			Http::OAuthError('server_error', '', 500);
