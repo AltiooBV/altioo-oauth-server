@@ -3,7 +3,8 @@
 #
 # Plays an OAuth client against the installed module: discovery, registration
 # and what the token and authorize endpoints refuse without anyone signed in, among it the
-# registration rate limit, tripped from a loopback address of its own with the limit lowered.
+# registration rate limit, tripped from a loopback address of its own with the limit lowered,
+# and the sessions that anonymous callers leave behind.
 # With ITOP_ADMIN_USER and ITOP_ADMIN_PWD set it then goes through the whole
 # flow - login, consent, code exchange, a REST call with the minted token,
 # refresh in place (ADR 0004), the refresh grace period, revocation - first as a public
@@ -121,6 +122,57 @@ esac
 expect "the refusal holds on a second try" "$sAgain" $'\n429'
 expect "while another address registers right after" "$sOther" $'\n201'
 expect "and gets its client" "$sOther" '"client_id"'
+
+# What anonymous callers leave behind. iTop opens a session for every request, and nobody is
+# signed in at register, authorize or token, so each call sets a cookie nobody sends back and
+# leaves a session file nothing will ever read again (review/2026-11-03-red.md). The module
+# deletes none of them - CleanUpProcess does not touch sessions - so the bound is PHP's own
+# collector, and this checks the two halves of that on a server of its own, whose session
+# directory is this script's: one file per call, never more, and gone again once PHP's
+# collector runs. Whether a production host's PHP runs it at all (Debian's packages replace
+# it with a cron job) is not something a CI instance can say.
+SESSION_ROUNDS=10
+sSessions=$(mktemp -d)
+sSessPort=$((PORT + 10))
+sSessEndpoint="http://${HOST}:${sSessPort}/env-${ITOP_ENV}/${MODULE_CODE}/index.php"
+session_files() { find "$sSessions" -name 'sess_*' | wc -l; }
+session_server() { # <ini>... - started like the main one, in a group of its own
+	setsid env PHP_CLI_SERVER_WORKERS=4 php -S "${HOST}:${sSessPort}" -d session.save_path="$sSessions" "$@" -t "$ITOP_DIR" >>"$ITOP_DIR/ci-httpd-sessions.log" 2>&1 &
+	iSessionServer=$!
+	for _ in $(seq 1 30); do curl -sS -o /dev/null "http://${HOST}:${sSessPort}/index.php" 2>/dev/null && break; sleep 1; done
+}
+session_burst() {
+	local i
+	for i in $(seq 1 "$SESSION_ROUNDS"); do
+		curl -sS -o /dev/null -X POST -H 'Content-Type: application/json' \
+			-d "{\"client_name\":\"Sessions\",\"redirect_uris\":[\"$CALLBACK\"]}" "$sSessEndpoint?route=register"
+		curl -sS -o /dev/null -d grant_type=refresh_token -d refresh_token=garbage -d "client_id=$sClient" "$sSessEndpoint?route=token"
+		curl -sS -o /dev/null -G "$sSessEndpoint" --data-urlencode route=authorize \
+			--data-urlencode client_id=0123456789abcdef0123456789abcdef --data-urlencode redirect_uri=https://evil.example/cb
+	done
+}
+stop_session_server() { kill -TERM -"$iSessionServer" 2>/dev/null || true; wait "$iSessionServer" 2>/dev/null || true; }
+
+# Collector off, so that what is counted is what the calls made.
+session_server -d session.gc_probability=0
+iBefore=$(session_files)
+session_burst
+iAfter=$(session_files)
+stop_session_server
+iCalls=$((SESSION_ROUNDS * 3))
+iGrowth=$((iAfter - iBefore))
+# Collector on every request and after two seconds, then one more call to run it.
+session_server -d session.gc_maxlifetime=2 -d session.gc_probability=1 -d session.gc_divisor=1
+sleep 3
+curl -sS -o /dev/null -d grant_type=refresh_token -d refresh_token=garbage -d "client_id=$sClient" "$sSessEndpoint?route=token"
+iCollected=$(session_files)
+stop_session_server
+rm -rf "$sSessions"
+[ "$iGrowth" -gt 0 ] || { rm -f "$JAR"; fail "$iCalls anonymous calls left no session file: the check is not looking where iTop writes sessions"; }
+[ "$iGrowth" -le "$iCalls" ] || { rm -f "$JAR"; fail "$iCalls anonymous calls left $iGrowth session files: a call opens more than one session"; }
+echo "   ok  $iCalls anonymous register, token and authorize calls leave $iGrowth session files, at most one each"
+[ "$iCollected" -le 2 ] || { rm -f "$JAR"; fail "$iGrowth session files were still there ($iCollected) after PHP's collector ran: something keeps them"; }
+echo "   ok  and PHP's collector reclaims them ($iCollected left)"
 
 if [ -z "${ITOP_ADMIN_USER:-}" ] || [ -z "${ITOP_ADMIN_PWD:-}" ]; then
 	echo "   --  no ITOP_ADMIN_USER / ITOP_ADMIN_PWD: the signed-in flow is not exercised"
