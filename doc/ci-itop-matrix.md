@@ -51,6 +51,7 @@ have:
 | HTTP entry point | `http-smoke.sh` | `index.php` at the root |
 | module checks of its own | everything after the version check in `itop-smoke.php` | `tools/ci/checks/module-smoke.php` |
 | entry-point checks of its own | everything after the generic half of `http-smoke.sh` | `tools/ci/checks/http-smoke.sh` |
+| protocol conformance | (this module only) | `tools/ci/checks/conformance.sh`, sourced by the one above: RFC 8414, 9728, 7591, 6749 §5 and 7009, field by field, on every run of this workflow — the Monday schedule included. The OpenID Foundation suite is not used: this is not an OpenID provider |
 | upgrade fixture | the seed and verify steps (`upgrade.yml`) | `tools/ci/upgrade-fixture.php` |
 | production dependency | nothing — an empty SBOM is accepted | `composer sbom` |
 | `index.php`, `.htaccess` or `web.config` (any one requires both guards), `NOTICE`, dictionaries, `tests/php-unit-tests/`, a file the module names as `<module code>/<path>` (a datamodel stylesheet or logo, an SCSS import) | their check in the archive (`tools/ci/build-archive.sh`, run by `ci.yml`'s `package` job and by `release.yml`) | the file in the source tree |

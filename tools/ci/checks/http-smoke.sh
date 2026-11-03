@@ -174,6 +174,9 @@ echo "   ok  $iCalls anonymous register, token and authorize calls leave $iGrowt
 [ "$iCollected" -le 2 ] || { rm -f "$JAR"; fail "$iGrowth session files were still there ($iCollected) after PHP's collector ran: something keeps them"; }
 echo "   ok  and PHP's collector reclaims them ($iCollected left)"
 
+# shellcheck source=conformance.sh
+. "$(dirname "${BASH_SOURCE[0]}")/conformance.sh"
+
 if [ -z "${ITOP_ADMIN_USER:-}" ] || [ -z "${ITOP_ADMIN_PWD:-}" ]; then
 	echo "   --  no ITOP_ADMIN_USER / ITOP_ADMIN_PWD: the signed-in flow is not exercised"
 	rm -f "$JAR"
