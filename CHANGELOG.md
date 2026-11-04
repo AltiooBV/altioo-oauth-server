@@ -7,11 +7,12 @@ installable.
 
 ## [Unreleased]
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-11-04
 
-Not released: what 0.1.0 will contain. Installed on itop.altioo.com and tested there with Claude
-Code, Claude Desktop and claude.ai on the web, through altioo-mcp. Not tested with a client
-configured by hand, which only the automated HTTP checks exercise.
+The first release. Installed from a CI-built archive on itop.altioo.com (iTop 3.2.3-2, PHP 8.4.27)
+and tested there with Claude Code, Claude Desktop and claude.ai on the web, through altioo-mcp.
+Not tested with a client configured by hand, which only the automated HTTP checks exercise. CI
+installs it on iTop 3.2.3-3 with PHP 8.2 and 8.4.
 
 ### Added
 

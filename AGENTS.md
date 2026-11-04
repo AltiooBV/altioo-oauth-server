@@ -22,9 +22,8 @@ dated. For Claude Code, `tools/hooks/guide-gate.sh` refuses the first edit until
   and do not restate it here: when it is settled, it moves into `doc/` and this line goes.
 - **A throwaway spike comes before production code.** The design note lists what it must
   prove; its code is not the start of the extension.
-- **The module is at its first increment, 0.1.0, unreleased.** The spike it replaces lives on
-  `spike/claude-connect`. What still has to exist before the first publication (the background
-  clean-up of codes and ended grants among it) is in
+- **The module is at its first release, 0.1.0.** The spike it replaces lives on
+  `spike/claude-connect`. What is still open from the first publication is in
   [`doc/release-checklist.md`](doc/release-checklist.md), "Before the first publication".
 
 ## 3. Decisions an agent could undo

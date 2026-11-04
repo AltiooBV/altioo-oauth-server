@@ -35,7 +35,7 @@ on:
   workflow_dispatch:
     inputs:
       baseline_ref:
-        description: 'Git ref to upgrade from (tag, branch or SHA). Empty = the oldest and newest release tags.'
+        description: 'Git ref to upgrade from (tag, branch or full SHA). Empty = the oldest and newest release tags.'
         required: false
         type: string
 

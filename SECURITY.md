@@ -52,7 +52,7 @@ the person consented to. That is the client's behaviour, not this extension's de
 
 | Version | Status |
 |---|---|
-| — | No version has been released. The first release adds its row here, dated the day it is published. |
+| 0.1.x | Supported. Released 2026-11-04, security fixes until 2031-11-04. |
 
 Fixes are issued as a new patch of every minor still inside its support period below, not only
 of the newest one. The extension follows iTop's own branch policy: a version supported here runs
