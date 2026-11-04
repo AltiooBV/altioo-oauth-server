@@ -24,7 +24,7 @@ not repeat these — *Every release* below is the recurring list.
       **default branch**, so a tree landed on `main` while private starts installing a full iTop
       per PHP version weekly with nobody pushing anything. Either disable Actions until the
       repository is public, or keep the tree off the default branch until then.
-- [ ] **Rehearse the release.** Run
+- [x] **Rehearse the release.** 2026-11-04: run 41874173647, on `66fc12b`. Run
       [release.yml](https://github.com/AltiooBV/altioo-oauth-server/blob/main/.github/workflows/release.yml)
       by `workflow_dispatch`: it builds and checksums the archive **without publishing
       anything** — the one rehearsal of a path that otherwise runs for the first time on the
@@ -43,7 +43,10 @@ not repeat these — *Every release* below is the recurring list.
 - [ ] **Write `tools/ci/upgrade-fixture.php`** once 0.1.0 is tagged: the upgrade workflow
       installs the previous release and upgrades it, and until there is one there is nothing
       to seed. It must seed a client, an active connection and its token, and check after the
-      upgrade that the connection still refreshes.
+      upgrade that the connection still refreshes. Until then `upgrade.yml` proves the setup, not
+      the data: on 2026-11-04, run 41875576197 upgraded from `3c3b97f` to `66fc12b` and skipped
+      its seeding and *Is everything still there* steps. The maintainer saw connections from
+      earlier builds still active in the console of itop.altioo.com.
 - [x] **Clean up after the flow.** 2026-10-28: `src/Service/CleanUpProcess.php`, hourly.
 - [x] **Let an administrator revoke a connection** from the console, and the person from My
       Account. 2026-10-28: the Revoke stimulus on `AltiooOAuthGrant`, and *Connected
@@ -57,8 +60,8 @@ not repeat these — *Every release* below is the recurring list.
 - [x] **Write `doc/security-summary.md`**, the page an approver reads (guide §9.8).
       2026-11-02: written for 0.1.0. Its *Who can publish* row is still empty until the
       publishers are named above; refresh the whole page at every release.
-- [ ] **Start `CHANGELOG.md`** with the first version, in Keep a Changelog format, and give
-      SECURITY.md's *Supported versions* its first row, both dated the day of the tag.
+- [x] **Start `CHANGELOG.md`** with the first version, in Keep a Changelog format, and give
+      SECURITY.md's *Supported versions* its first row, both dated the day of the tag. 2026-11-04.
 
 ## Every release
 

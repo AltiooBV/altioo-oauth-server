@@ -4,7 +4,7 @@ The page an approver reads before this module reaches an instance: the questions
 compliance and procurement ask every vendor, answered once (guide §9.8). Each answer is short and
 points at the file that holds the detail, so that this page cannot drift from it.
 
-**State:** 0.1.0, not released. Refresh this page with every release: the answers below describe
+**State:** 0.1.0, released 2026-11-04. Refresh this page with every release: the answers below describe
 the tree it ships in, and a row that no longer holds is a release blocker, not a typo.
 
 ## What it is

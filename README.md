@@ -9,8 +9,8 @@ person can see the connection, and end it, under *My Account*.
 [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [Decisions](doc/adr/) ·
 [Settings](#settings) · [Troubleshooting](#troubleshooting)
 
-> **Not released yet.** Version 0.1.0 will be the first release. It has been tested with Claude
-> Code, Claude Desktop and claude.ai on the web, but not with a client configured by hand.
+> **First release.** Version 0.1.0 has been tested with Claude Code, Claude Desktop and claude.ai
+> on the web, but not with a client configured by hand. [CHANGELOG.md](CHANGELOG.md) says on what.
 
 ## What it protects
 
