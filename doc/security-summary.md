@@ -30,7 +30,7 @@ that answer callers who are not signed in. [README.md](../README.md) says what i
 | Build | By CI from a `v*` tag only ([release.yml](../.github/workflows/release.yml)): unit suite against the tagged tree, `composer audit --locked`, then the archive (`tools/ci/build-archive.sh`) |
 | Checksum | `<archive>.zip.sha256` beside the archive, checked by the workflow against the build job's own digest before publishing |
 | Attestation | GitHub build provenance (`actions/attest-build-provenance`), verifiable with `gh attestation verify` |
-| Who can publish | **Not named yet.** Whoever can push a `v*` tag publishes a release. The names are a first-publication item in [release-checklist.md](release-checklist.md), and this row is filled in from it |
+| Who can publish | Guy Couronné (GitHub `GurneyHallack`), named 2026-11-04. Whoever can push a `v*` tag publishes a release |
 
 ## Vulnerability process
 

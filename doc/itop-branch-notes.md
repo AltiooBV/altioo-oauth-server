@@ -7,6 +7,8 @@ a verification date.
 ```
 VERIFIED    iTop 3.2.2 source, paths cited inline
 AS OF       August 2026
+RE-VERIFIED 2026-11-04, against tag 3.2.3-3: one commit over 3.2.3-2 (inline images,
+            a new security setting), which changes nothing here but §1 and §2's 3.2.3 rows.
 RE-VERIFIED 2026-10-05, against the packaged 3.2.3-2 and 3.3.0: branch status (§1),
             PHP constants (§2), extension.xml elements (§5), extension-point
             deprecations (§6, §7), harness pins (§8), and every path cited here.
@@ -37,7 +39,7 @@ copy a branch or PHP value from here into a claim about this extension.
 
 | Branch | Track | Upstream status |
 |---|---|---|
-| **3.2.x** | **LTS** | current LTS, latest 3.2.3-2 (Apr 2026) |
+| **3.2.x** | **LTS** | current LTS, latest 3.2.3-3 (Oct 2026) |
 | 3.3.x | STS | released, 3.3.0 (archive `iTop-3.3.0-21411.zip`, tag `3.3.0`) |
 | 3.1.x | — | unmaintained (last 3.1.3, Apr 2025) |
 | 3.0.x | — | unmaintained (last 3.0.4, Jan 2024) |
@@ -70,7 +72,7 @@ is a 404. Verified August 2026.
 | iTop | PHP |
 |---|---|
 | 3.2.0–3.2.2 | 8.1 → 8.3 (8.4 known issues) |
-| 3.2.3-1, 3.2.3-2 | 8.1 → 8.4 |
+| 3.2.3-1 → 3.2.3-3 | 8.1 → 8.4 |
 | 3.3.x | 8.2 → 8.4 |
 
 **What this extension tests on** is a different statement, and lives in
