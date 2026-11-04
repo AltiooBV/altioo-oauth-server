@@ -48,6 +48,9 @@ upgrade must not lose. Without one, the seed and verify steps skip and the upgra
 checked by `itop-smoke.php` and the integration suite alone — which is the whole of it for an
 extension that stores nothing.
 
+This extension's seeds what its header lists, and both its modes then use the connection over HTTP,
+as its client would: a change that leaves every row in place and refuses every refresh fails here too.
+
 What tends to earn a row, and what its loss would mean:
 
 | Seeded | What its loss would mean |
@@ -115,6 +118,10 @@ instance where this module is not installed at all — both are the same mistake
 - **A client's own data.** The fixture is what this module writes plus whatever core objects it
   touches. An instance with years of tickets and a dozen other extensions is a different
   upgrade.
+- **A migration, while there is none.** A working copy at the baseline's version, as on the first
+  run from `v0.1.0`, re-applies that version: `upgrade-module.sh` says so in a notice. That run
+  shows the fixture works and that the setup keeps the data; what a schema or version change does
+  is first tested by the change that makes one.
 - **Downgrade.** Say in the README whether it is supported; if it is not, nothing tests it
   because the answer is "restore the backup".
 - **The browser.** That the console still shows what the module added — its menus, profiles,
