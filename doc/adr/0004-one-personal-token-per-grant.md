@@ -34,4 +34,5 @@ live for weeks.
 
 Enforced by: `tools/ci/checks/http-smoke.sh`. After a refresh it checks that the old access
 token is refused and the new one works on REST/JSON, and that the previous refresh token is
-accepted once within the grace period.
+accepted once within the grace period. `tools/ci/upgrade-fixture.php` checks a connection seeded
+before an upgrade the same way after it, and that it still owns one token, the same row.
