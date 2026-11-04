@@ -9,8 +9,9 @@ person can see the connection, and end it, under *My Account*.
 [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [Decisions](doc/adr/) ·
 [Settings](#settings) · [Troubleshooting](#troubleshooting)
 
-> **Not released yet.** Version 0.1.0 is the first increment. It has not been tested against
-> claude.ai, which the release gate requires.
+> **Not released yet.** Version 0.1.0 is the first increment. It has been tested with Claude
+> Code and Claude Desktop and connected from claude.ai on the web, but not tested with a client
+> configured by hand.
 
 ## What it protects
 

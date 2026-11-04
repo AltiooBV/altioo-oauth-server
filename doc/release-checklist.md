@@ -48,8 +48,11 @@ not repeat these — *Every release* below is the recurring list.
 - [x] **Let an administrator revoke a connection** from the console, and the person from My
       Account. 2026-10-28: the Revoke stimulus on `AltiooOAuthGrant`, and *Connected
       applications* under *Personal Tokens*.
-- [ ] **Connect claude.ai** to a test instance over HTTPS, and one hand-configured client,
+- [x] **Connect claude.ai** to a test instance over HTTPS, and one hand-configured client,
       as the release gate in the design note says; record what was tested in the changelog.
+      2026-11-04: narrowed by the maintainer. Tested with Claude Code and Claude Desktop;
+      claude.ai on the web connects and lists the tools; the hand-configured client is recorded
+      as untested.
 - [x] **Complete the README** against the guide's §9.3. 2026-10-28, before any release: check
       it again against what 0.1.0 actually ships, the upgrade procedure in particular.
 - [x] **Write `doc/security-summary.md`**, the page an approver reads (guide §9.8).
