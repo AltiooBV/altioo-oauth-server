@@ -11,15 +11,15 @@ Done once. Tick each item with the date and what was actually done, rather than 
 a finished checklist is worth reading afterwards only for that record. A second release does
 not repeat these — *Every release* below is the recurring list.
 
-- [ ] **Make the repository public**, if it is to be. The URLs in `extension.xml`
+- [x] **Make the repository public**, if it is to be. 2026-11-04: public. The URLs in `extension.xml`
       (`more_info_url`), `composer.json` (`homepage`, `support.*`), the module declaration's
       `doc.*` entries and the README only resolve for a reader once it is.
-- [ ] **Enable private vulnerability reporting**, in the same sitting: it is
+- [x] **Enable private vulnerability reporting**, in the same sitting (2026-11-04, enabled): it is
       public-repository-only, and it is the channel [SECURITY.md](../SECURITY.md) names first.
       Until it answers, the response windows SECURITY.md commits to have no route to arrive on.
-- [ ] **Create the security mailbox** SECURITY.md names as the alternative to GitHub, and
-      confirm somebody reads it.
-- [ ] **Decide when Actions run.** Minutes are metered on a private repository and free on a
+- [x] **Create the security mailbox** SECURITY.md names as the alternative to GitHub, and
+      confirm somebody reads it. 2026-11-04: confirmed by the maintainer.
+- [x] **Decide when Actions run.** 2026-11-04: from the first push, the repository being public. Minutes are metered on a private repository and free on a
       public one, and three workflows carry a `schedule` — scheduled workflows run from the
       **default branch**, so a tree landed on `main` while private starts installing a full iTop
       per PHP version weekly with nobody pushing anything. Either disable Actions until the
@@ -29,7 +29,7 @@ not repeat these — *Every release* below is the recurring list.
       by `workflow_dispatch`: it builds and checksums the archive **without publishing
       anything** — the one rehearsal of a path that otherwise runs for the first time on the
       tag itself.
-- [ ] **Name the publishers.** Who can push a `v*` tag is who can publish a release; an
+- [x] **Name the publishers.** 2026-11-04: Guy Couronné (GitHub `GurneyHallack`). Who can push a `v*` tag is who can publish a release; an
       approver asking "who can publish" is asking about people, not about a workflow file
       (guide §9.8). Write the names down where the audit evidence lives, and revisit them
       whenever that stops being true rather than at the next release.
@@ -50,9 +50,8 @@ not repeat these — *Every release* below is the recurring list.
       applications* under *Personal Tokens*.
 - [x] **Connect claude.ai** to a test instance over HTTPS, and one hand-configured client,
       as the release gate in the design note says; record what was tested in the changelog.
-      2026-11-04: narrowed by the maintainer. Tested with Claude Code and Claude Desktop;
-      claude.ai on the web connects and lists the tools; the hand-configured client is recorded
-      as untested.
+      2026-11-04: narrowed by the maintainer. Tested on itop.altioo.com with Claude Code, Claude
+      Desktop and claude.ai on the web; the hand-configured client is recorded as untested.
 - [x] **Complete the README** against the guide's §9.3. 2026-10-28, before any release: check
       it again against what 0.1.0 actually ships, the upgrade procedure in particular.
 - [x] **Write `doc/security-summary.md`**, the page an approver reads (guide §9.8).

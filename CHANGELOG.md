@@ -7,10 +7,11 @@ installable.
 
 ## [Unreleased]
 
-Not released: what 0.1.0 will contain. Installed for testing on a staging instance and tested
-with Claude Code and Claude Desktop; claude.ai on the web connects and lists altioo-mcp's
-tools. Not tested with a client configured by hand, which only the automated HTTP checks
-exercise.
+## [0.1.0] - Unreleased
+
+Not released: what 0.1.0 will contain. Installed on itop.altioo.com and tested there with Claude
+Code, Claude Desktop and claude.ai on the web, through altioo-mcp. Not tested with a client
+configured by hand, which only the automated HTTP checks exercise.
 
 ### Added
 
