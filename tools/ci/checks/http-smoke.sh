@@ -11,7 +11,9 @@
 # client registered by itself, then as the confidential client
 # checks/module-smoke.php created: no PKCE, no resource parameter, the secret in a
 # Basic header. ITOP_TOKEN carries that client and the other fixtures module-smoke.php
-# made, as "<client_id>:<secret>:<old refresh token>:<login>:<password>:<portal-era refresh token>:<withdrawn client_id>".
+# made, as "<client_id>:<secret>:<old refresh token>:<login>:<password>:<portal-era refresh token>:<withdrawn client_id>",
+# then the login and password of an account the MCP resource refuses and of a portal-only one it
+# offers portal grades, both "-" where the MCP stand-in (tools/ci/fixtures/altioo-mcp) is not installed.
 #
 # PHP's built-in server ignores .htaccess, so the discovery rewrite is not
 # exercised here: index.php?route=... is.
@@ -343,7 +345,8 @@ if [ -z "$ITOP_TOKEN" ] || [ "${ITOP_TOKEN#*:}" = "$ITOP_TOKEN" ]; then
 	rm -f "$JAR"
 	fail "module-smoke.php passed no confidential client"
 fi
-IFS=: read -r sCcId sCcSecret sOldRefresh sNoRestLogin sNoRestPassword sPortalRefresh sWithdrawnClient <<< "$ITOP_TOKEN"
+IFS=: read -r sCcId sCcSecret sOldRefresh sNoRestLogin sNoRestPassword sPortalRefresh sWithdrawnClient \
+	sNoMcpLogin sNoMcpPassword sPortalLogin sPortalPassword <<< "$ITOP_TOKEN"
 CC_CALLBACK='https://smoke.example/callback'
 
 # A client that registered itself with a callback since dropped from the allowlist: refused on a
@@ -480,6 +483,120 @@ expect "the server metadata may be kept a few minutes, by the client only" "$sOu
 case "$sOut" in *[Aa]llow-[Cc]redentials*) rm -f "$JAR"; fail "the discovery documents allow credentials" ;; esac
 sOut=$(curl -sS -D - -o /dev/null -X OPTIONS -H 'Origin: https://evil.example' -H 'Access-Control-Request-Method: GET' "$ENDPOINT?route=protected-resource&for=mcp")
 expect "a preflight for the resource metadata is answered" "$sOut" ' 204'
+
+# The MCP resource, against the stand-in tools/ci/fixtures/altioo-mcp, which registers the MCP
+# scopes and answers a Bearer token as altioo-mcp asks this module about it. Whether this
+# instance has it at all is what module-smoke.php decides; a CI instance without it is a failure
+# there, so the half below is not silently skipped here: ITOP_TOKEN says whether it ran.
+if [ "$sNoMcpLogin" != '-' ]; then
+	MCP="$BASE/env-production/altioo-mcp/index.php"
+	mcp_authorize() { # <jar> <resource> -> the redirect, to sign in or to consent
+		curl -sS -o /dev/null -w '%{redirect_url}' -c "$1" -b "$1" -G "$ENDPOINT" \
+			--data-urlencode route=authorize --data-urlencode response_type=code \
+			--data-urlencode "client_id=$sClient" --data-urlencode "redirect_uri=$CALLBACK" \
+			--data-urlencode "code_challenge=$sChallenge" --data-urlencode code_challenge_method=S256 \
+			--data-urlencode state=mcp --data-urlencode "resource=$2"
+	}
+	mcp_sign_in() { # <jar> <login> <password> <consent url> -> the consent page and its status
+		curl -sS -o /dev/null -c "$1" -b "$1" "$4"
+		curl -sS -w '\n%{http_code}' -c "$1" -b "$1" --data-urlencode loginop=login \
+			--data-urlencode "auth_user=$2" --data-urlencode "auth_pwd=$3" "$4"
+	}
+	mcp_allow() { # <jar> <consent url> <consent page> <grade> -> the token endpoint's answer
+		local sTransaction sBackTo sMcpCode
+		sTransaction=$(printf '%s' "$3" | sed -n 's/.*name="transaction_id" value="\([^"]*\)".*/\1/p')
+		sBackTo=$(curl -sS -o /dev/null -w '%{redirect_url}' -c "$1" -b "$1" \
+			--data-urlencode "transaction_id=$sTransaction" --data-urlencode decision=allow \
+			--data-urlencode "grade=$4" "$2")
+		sMcpCode=$(printf '%s' "$sBackTo" | sed -n 's/.*[?&]code=\([^&]*\).*/\1/p')
+		curl -sS -d grant_type=authorization_code --data-urlencode "code=$sMcpCode" -d "client_id=$sClient" \
+			--data-urlencode "redirect_uri=$CALLBACK" --data-urlencode "code_verifier=$sVerifier" \
+			--data-urlencode "resource=$MCP" "$ENDPOINT?route=token"
+	}
+	mcp_call() { # <url> <access token> -> the status and the body
+		curl -sS -w '\n%{http_code}' -H "Authorization: Bearer $2" "$1"
+	}
+
+	sPrm=$(curl -sS "$ENDPOINT?route=protected-resource&for=mcp")
+	expect "the MCP resource's metadata names its URL" "$sPrm" "\"resource\":\"$MCP\""
+	expect "and offers its scopes" "$sPrm" '"MCP-read"'
+	expect "and says it reads the Bearer header" "$sPrm" '"bearer_methods_supported":["header"]'
+	sOut=$(curl -sS -D - -o /dev/null "$MCP")
+	expect "a call without a token is a 401" "$sOut" ' 401'
+	expect "that names the resource's metadata" "$sOut" "resource_metadata=\"$ENDPOINT?route=protected-resource&for=mcp\""
+	sOut=$(curl -sS -D - -o /dev/null "$MCP?portal_id=itop-portal")
+	case "$sOut" in *resource_metadata*) rm -f "$JAR"; fail "a URL no resource is configured for was given a metadata URL: $sOut" ;; esac
+	echo "   ok  another URL of the same endpoint is sent to no metadata"
+
+	# An administrator, who has the console: the four grades and the limit, then read only.
+	sLoc=$(mcp_authorize "$JAR" "$MCP")
+	sConsent=$(curl -sS -c "$JAR" -b "$JAR" "$sLoc")
+	expect "the MCP consent page names the resource in words" "$sConsent" 'its MCP server'
+	expect "and gives the address the token is held to" "$sConsent" "$MCP"
+	expect "it offers read only" "$sConsent" 'Read only'
+	expect "and read and change, never delete" "$sConsent" 'Read and change, never delete'
+	expect "and read, change and delete" "$sConsent" 'Read, change and delete'
+	expect "and everything" "$sConsent" 'Everything I can do'
+	expect "and the advisory limit, under a heading of its own" "$sConsent" 'Only propose changes, never make them'
+	sTok=$(mcp_allow "$JAR" "$sLoc" "$sConsent" 0)
+	sMcpAccess=$(printf '%s' "$sTok" | json_field access_token)
+	[ -n "$sMcpAccess" ] || { rm -f "$JAR"; fail "the MCP grant issued no token: ${sTok:0:300}"; }
+	sOut=$(mcp_call "$MCP" "$sMcpAccess")
+	expect "the MCP token is accepted at its URL" "$sOut" '"ok":true'
+	expect "and carries the grade chosen, read" "$sOut" '"scopes":["MCP-read"]'
+	sOut=$(mcp_call "$MCP?portal_id=itop-portal" "$sMcpAccess")
+	expect "the same token is refused at another portal's URL" "$sOut" '401'
+	expect "with the reason" "$sOut" 'another URL of this endpoint'
+	expect "a token minted for MCP does not reach REST/JSON" "$(rest_get "$sMcpAccess")" '"code":1'
+	sLoc=$(authorize)
+	sBack=$(allow "$sLoc" "$(curl -sS -c "$JAR" -b "$JAR" "$sLoc")")
+	sCode=$(printf '%s' "$sBack" | sed -n 's/.*[?&]code=\([^&]*\).*/\1/p')
+	sTok=$(curl -sS -d grant_type=authorization_code --data-urlencode "code=$sCode" -d "client_id=$sClient" \
+		--data-urlencode "redirect_uri=$CALLBACK" --data-urlencode "code_verifier=$sVerifier" \
+		--data-urlencode "resource=$sResource" "$ENDPOINT?route=token")
+	sRestAccess=$(printf '%s' "$sTok" | json_field access_token)
+	sOut=$(mcp_call "$MCP" "$sRestAccess")
+	expect "and a token minted for REST/JSON is refused at the MCP endpoint" "$sOut" '401'
+
+	# The two accounts below are not administrators, and authent-token lets only the profiles it
+	# lists own a personal token (Administrator, by default): an instance with altioo-mcp tells its
+	# administrator to add MCP Services User there. They are let in the way that is done, through
+	# the configuration file for the length of these calls, and the file is put back before
+	# anything is checked, as it is for the rate limit above. Configuration Manager is added so
+	# that the account the MCP resource refuses is refused for its own reason and not for this.
+	cp -p "$CONF" "$CONF.mcp-orig"
+	php -r '$s = file_get_contents($argv[1]); $s = preg_replace("/\?>\s*\z/", "", $s);
+		file_put_contents($argv[1], $s."\n\$MyModuleSettings[\"authent-token\"][\"personal_tokens_allowed_profiles\"] = [\"Administrator\", \"MCP Services User\", \"Configuration Manager\"];\n?>\n");' "$CONF"
+
+	# An account holding neither profile the resource requires.
+	NOMCP_JAR=$(mktemp)
+	sLoc=$(mcp_authorize "$NOMCP_JAR" "$MCP")
+	sNoMcpOut=$(mcp_sign_in "$NOMCP_JAR" "$sNoMcpLogin" "$sNoMcpPassword" "$sLoc")
+	rm -f "$NOMCP_JAR"
+
+	# An account with the portal and no console: its own grades, and nothing wider.
+	PORTAL_JAR=$(mktemp)
+	sLoc=$(mcp_authorize "$PORTAL_JAR" "$MCP")
+	sConsent=$(mcp_sign_in "$PORTAL_JAR" "$sPortalLogin" "$sPortalPassword" "$sLoc")
+	sTok=$(mcp_allow "$PORTAL_JAR" "$sLoc" "$sConsent" 1)
+	rm -f "$PORTAL_JAR"
+	mv -f "$CONF.mcp-orig" "$CONF"
+
+	expect "an account without a profile the MCP resource requires is told so before consent" "$sNoMcpOut" 'Not available for your account'
+	expect "and the page is a 403" "$sNoMcpOut" '403'
+	expect "a portal-only account is offered read only" "$sConsent" 'Read only'
+	expect "or everything in its portal" "$sConsent" 'Everything I can do in my portal'
+	for sWider in 'Read and change, never delete' 'Read, change and delete'; do
+		case "$sConsent" in *"$sWider"*) rm -f "$JAR"; fail "a portal-only account was offered '$sWider'" ;; esac
+	done
+	echo "   ok  and nothing wider than that"
+	expect "and the limit it may still apply" "$sConsent" 'Only propose changes, never make them'
+	sPortalAccess=$(printf '%s' "$sTok" | json_field access_token)
+	[ -n "$sPortalAccess" ] || { rm -f "$JAR"; fail "the portal-only MCP grant issued no token: ${sTok:0:300}"; }
+	sOut=$(mcp_call "$MCP" "$sPortalAccess")
+	expect "its token is accepted at the MCP URL" "$sOut" '"ok":true'
+	expect "and carries the whole-portal scope" "$sOut" '"scopes":["MCP"]'
+fi
 
 # An account the REST/JSON resource would refuse is refused before consent, with a reason.
 NOREST_JAR=$(mktemp)

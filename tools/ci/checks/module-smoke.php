@@ -55,8 +55,23 @@ foreach ($aDefaults as $sName => $default) {
 $aResources = Config::Resources();
 check('the REST/JSON resource is served', isset($aResources['rest']));
 check('the REST/JSON resource is webservices/rest.php', isset($aResources['rest']) && str_ends_with($aResources['rest']->sUrl, '/webservices/rest.php'));
-if (MetaModel::IsValidClass('AltiooEventMCPService')) {
-	check('with altioo-mcp installed, its resource is served', isset($aResources['mcp']));
+// The MCP resource exists only where something registers the MCP scopes: altioo-mcp, or the
+// stand-in tools/ci/fixtures/altioo-mcp that CI installs in its place (doc/ci-itop-matrix.md).
+// On an instance with neither, its absence is right; on a CI instance it must not be silent.
+$bMcpScopes = in_array('MCP-read', array_keys((array) MetaModel::GetAttributeDef('PersonalToken', 'scope')->GetPossibleValues()), true);
+check('the MCP resource is served exactly when the MCP scopes are registered', isset($aResources['mcp']) === $bMcpScopes);
+if (isset($aResources['mcp'])) {
+	$oMcp = $aResources['mcp'];
+	check('the MCP resource is the altioo-mcp endpoint', str_ends_with($oMcp->sUrl, '/env-'.utils::GetCurrentEnvironment().'/altioo-mcp/index.php'));
+	check('its grades are read, write, delete and everything, each wider than the last',
+		array_column($oMcp->aGrades, 'scopes') === [['MCP-read'], ['MCP-write'], ['MCP-write', 'MCP-delete'], ['MCP']]);
+	check('its one limit is advisory', array_column($oMcp->aLimits, 'scopes') === [['MCP-advisory']]);
+	check('an account without the console is offered read, or everything in its portal, and the limit',
+		array_column($oMcp->ForAccount(false)->aGrades, 'scopes') === [['MCP-read'], ['MCP']]
+		&& array_column($oMcp->ForAccount(false)->aLimits, 'scopes') === [['MCP-advisory']]);
+	check('it reads a token from the Bearer header', $oMcp->aBearerMethods === ['header']);
+	check('it requires Administrator or MCP Services User', $oMcp->aRequiredProfiles === ['Administrator', 'MCP Services User']);
+	check('the MCP Services User profile exists', MetaModel::GetObjectByColumn('URP_Profiles', 'name', 'MCP Services User', false) !== null);
 }
 
 $aProcesses = InterfaceDiscovery::GetInstance()->FindItopClasses(iProcess::class);
@@ -244,6 +259,37 @@ $oNoRest->AllowWrite();
 $oNoRest->DBInsert();
 check('the account without REST Services User is refused by the REST/JSON resource', !Altioo\iTop\Extension\OAuthServer\Config::Resources()['rest']->AllowsUser($oNoRest));
 
+// Two accounts for the MCP resource's checks over HTTP, when it is there: one it refuses for want
+// of a profile (a console account holding neither Administrator nor MCP Services User), and one
+// with the portal and no console, holding the gate profile, which it offers portal grades.
+$fnAccount = static function (string $sPrefix, array $aProfileNames): array {
+	$sLogin = $sPrefix.bin2hex(random_bytes(4));
+	$sPassword = 'Aa1!'.bin2hex(random_bytes(12));
+	$oUser = MetaModel::NewObject('UserLocal', ['login' => $sLogin, 'language' => 'EN US', 'expiration' => 'never_expire']);
+	$oUser->Set('password', $sPassword);
+	$oLinks = $oUser->Get('profile_list');
+	foreach ($aProfileNames as $sProfile) {
+		$oLinks->AddItem(MetaModel::NewObject('URP_UserProfile', [
+			'profileid' => MetaModel::GetObjectByColumn('URP_Profiles', 'name', $sProfile)->GetKey(),
+			'reason' => 'altioo-oauth-server HTTP smoke',
+		]));
+	}
+	$oUser->Set('profile_list', $oLinks);
+	$oUser->AllowWrite();
+	$oUser->DBInsert();
+
+	return [$sLogin, $sPassword, $oUser];
+};
+$sNoMcpLogin = $sNoMcpPassword = $sPortalLogin = $sPortalPassword = '-';
+if (isset($aResources['mcp'])) {
+	[$sNoMcpLogin, $sNoMcpPassword, $oNoMcp] = $fnAccount('smoke-nomcp-', ['Configuration Manager']);
+	check('a console account without a profile the MCP resource requires is refused by it', !$aResources['mcp']->AllowsUser($oNoMcp)
+		&& Altioo\iTop\Extension\OAuthServer\Service\Accounts::HasConsole($oNoMcp));
+	[$sPortalLogin, $sPortalPassword, $oPortalOnly] = $fnAccount('smoke-portal-', ['Portal user', 'MCP Services User']);
+	check('an account with the portal and the gate profile has no console', !Altioo\iTop\Extension\OAuthServer\Service\Accounts::HasConsole($oPortalOnly));
+	check('and the MCP resource accepts it', $aResources['mcp']->AllowsUser($oPortalOnly));
+}
+
 // A connection allowed while the account was portal-only, whose account now has the console
 // (the smoke administrator does): its next refresh must end it, for consent again.
 $sPortalSecret = Altioo\iTop\Extension\OAuthServer\Secret::NewSecret();
@@ -353,4 +399,8 @@ $sHttpSmokeToken = implode(':', [
 	$sNoRestPassword,
 	Altioo\iTop\Extension\OAuthServer\Secret::Join((int) $oPortalGrant->GetKey(), $sPortalSecret),
 	$oWithdrawn->Get('client_id'),
+	$sNoMcpLogin,
+	$sNoMcpPassword,
+	$sPortalLogin,
+	$sPortalPassword,
 ]);
