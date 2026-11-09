@@ -130,6 +130,32 @@ exactly as published.
 The module itself is copied in through `exclude.txt`, the same list the release archive is
 built from, so what gets installed is what ships.
 
+## The MCP stand-in
+
+The `mcp` resource exists only where something registers the `MCP*` token scopes, which is
+altioo-mcp's datamodel. CI does not install altioo-mcp, so without help the resource would simply
+not exist on a CI instance and nothing about it would be checked. `install-itop.sh` therefore
+also places every module found under `tools/ci/fixtures/<module code>/` in `extensions/`, beside
+this one, and fails if the setup did not install it. There is one, `tools/ci/fixtures/altioo-mcp/`:
+
+- **What it is.** Not altioo-mcp: a module with its code (the default `mcp` resource is
+  `<modules root>/altioo-mcp/index.php` and reads that module's settings, so another code would
+  test a configuration nobody runs), the five `MCP*` scopes the resource offers, the `MCP Services
+  User` profile it requires, and `index.php`, which answers a Bearer token the way altioo-mcp asks
+  this module about it (`TokenAudience`, `ResourceMetadata`) and speaks no MCP. It can never be
+  installed beside the real module.
+- **It never ships.** `exclude.txt` keeps `tools/` out of the archive, `build-archive.sh` is the
+  check, and the baseline of `upgrade.yml` has no such directory, so upgrades install none.
+- **What it lets CI check.** `module-smoke.php`: the resource's URL, grades, limit, portal grades
+  and required profiles. `http-smoke.sh`: the consent page's grades, the refusal of an account
+  without a required profile, the grades of an account with the portal and no console, a token
+  accepted at its URL and refused at another portal's (`?portal_id=`), a REST/JSON token refused
+  at the MCP endpoint and the reverse, and the resource's metadata.
+- **What it does not.** How the real altioo-mcp reads a token, and whether the two modules still
+  agree after either one changes. A scheduled job that installs a released altioo-mcp instead of
+  the stand-in would, and is a follow-up: it needs a public, checksummed altioo-mcp archive to
+  pin, and it fails for altioo-mcp's changes as well as this module's.
+
 ## An upstream test that does not exist
 
 `module_integration.xml.dist` is Combodo's, and the step is worth having *because* it is theirs:
@@ -189,6 +215,8 @@ php vendor/bin/phpunit --no-configuration --bootstrap unittestautoload.php --tes
 
 ## What this does not check
 
+- **The real altioo-mcp.** The MCP grant is exercised against the stand-in above, which agrees
+  with this module by construction. See that section for what that leaves.
 - **A web server's configuration.** The HTTP smoke uses PHP's built-in server, so it checks the
   application, not Apache or IIS. That `.htaccess` and `web.config` keep `src/`, `tests/` and
   `vendor/` unreachable is a manual step in the [release checklist](release-checklist.md).

@@ -30,5 +30,16 @@ Rejected: MCP only in 1.0, with REST/JSON later.
 
 Enforced by: `tools/ci/checks/http-smoke.sh`, for REST/JSON. It mints REST/JSON grants, for a
 public client naming the resource and for a confidential client relying on its default one,
-and calls `rest.php` with each token. The MCP grant is not exercised: CI does not install
-altioo-mcp.
+and calls `rest.php` with each token.
+
+The MCP grant is exercised against a stand-in, not against altioo-mcp: CI installs
+`tools/ci/fixtures/altioo-mcp/`, a module with altioo-mcp's code that registers the `MCP*` token
+scopes, the `MCP Services User` profile and a Bearer endpoint, and nothing else
+([doc/ci-itop-matrix.md](../ci-itop-matrix.md), "The MCP stand-in"). On it, `module-smoke.php`
+holds the `mcp` resource's URL, grades, limit, portal grades and required profiles, and
+`http-smoke.sh` runs the flow: the grades on the consent page, the refusal of an account without
+a required profile, the portal-only account's grades, a token held to its URL through
+`TokenAudience` (refused at another `?portal_id=` URL, and a REST/JSON token refused at the MCP
+endpoint), and the resource's metadata. What this does not show is how the real altioo-mcp reads
+a token or whether the two modules still agree. A scheduled job that installs a released
+altioo-mcp is a follow-up and not built.
