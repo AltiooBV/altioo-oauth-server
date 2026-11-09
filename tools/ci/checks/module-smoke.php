@@ -78,7 +78,7 @@ check('the portal template is in the compiled module', is_file(APPROOT.'env-'.ut
 $sSmokeSecret = bin2hex(random_bytes(24));
 $oConfidential = MetaModel::NewObject('AltiooOAuthClient', [
 	'client_name' => 'Smoke confidential client',
-	'redirect_uris' => "https://smoke.example/callback\nhttps://smoke.example/other",
+	'redirect_uris' => "https://smoke.example/callback\nhttps://smoke.example/other\nhttp://127.0.0.1:8765/callback",
 	'auth_method' => 'client_secret_basic',
 	'pkce' => 'optional',
 	'default_resource' => 'rest',

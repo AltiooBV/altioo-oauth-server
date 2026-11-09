@@ -385,6 +385,48 @@ sTok=$(curl -sS -d grant_type=refresh_token --data-urlencode "refresh_token=$sRe
 	-d "client_id=$sCcId" --data-urlencode "client_secret=$sCcSecret" "$ENDPOINT?route=token")
 expect "client_secret_post refreshes too" "$sTok" '"refresh_token"'
 
+# What a hand-configured REST/JSON client (README, "Clients configured by hand") relies on.
+# rest.php takes a token as an Auth-Token header or an auth_token parameter and, today, not as
+# Authorization: Bearer (ADR 0003). The last one is a canary: when an iTop starts reading it,
+# the README's account of what a client must be able to send is out of date.
+sCcAccess=$(printf '%s' "$sTok" | json_field access_token)
+sCcRefresh=$(printf '%s' "$sTok" | json_field refresh_token)
+REST_BODY='json_data={"operation":"core/get","class":"Organization","key":"SELECT Organization","output_fields":"name","limit":"1"}'
+expect "rest.php takes the token as an auth_token parameter" \
+	"$(curl -sS -X POST --data-urlencode "auth_token=$sCcAccess" --data-urlencode version=1.3 --data-urlencode "$REST_BODY" "$REST")" '"code":0'
+expect "and does not take it as Authorization: Bearer" \
+	"$(curl -sS -X POST -H "Authorization: Bearer $sCcAccess" --data-urlencode version=1.3 --data-urlencode "$REST_BODY" "$REST")" '"code":1'
+
+# client_secret_basic, the method the README tells an administrator to choose, on a refresh and
+# on a revocation (the checks above use the secret in the body for both).
+sTok=$(curl -sS -u "$sCcId:$sCcSecret" -d grant_type=refresh_token --data-urlencode "refresh_token=$sCcRefresh" "$ENDPOINT?route=token")
+expect "client_secret_basic refreshes" "$sTok" '"refresh_token"'
+expect "after that refresh the previous access token is refused" "$(rest_get "$sCcAccess")" '"code":1'
+sCcAccess=$(printf '%s' "$sTok" | json_field access_token)
+sCcRefresh=$(printf '%s' "$sTok" | json_field refresh_token)
+expect "and the new one works" "$(rest_get "$sCcAccess")" '"code":0'
+sOut=$(revoke -u "$sCcId:$sCcSecret" --data-urlencode "token=$sCcRefresh")
+expect "client_secret_basic revokes" "$sOut" '200'
+expect "revoking ends the hand-made client's access token" "$(rest_get "$sCcAccess")" '"code":1'
+
+# A redirect URI of a hand-made client matches exactly, byte for byte: a longer path, another
+# port or another loopback name is not the registered one. The fixed-port loopback URI is what
+# a script uses (ADR 0009); only a client that registered itself gets the any-port rule.
+cc_authorize() { # <redirect uri> -> "<status> <redirect url>"
+	curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' -c "$JAR" -b "$JAR" -G "$ENDPOINT" \
+		--data-urlencode route=authorize --data-urlencode response_type=code \
+		--data-urlencode "client_id=$sCcId" --data-urlencode "redirect_uri=$1" \
+		--data-urlencode 'scope=REST/JSON' --data-urlencode state=exact
+}
+sOut=$(cc_authorize 'http://127.0.0.1:8765/callback')
+expect "a hand-made client's fixed-port loopback callback is accepted" "$sOut" '302 http'
+for sUri in 'http://127.0.0.1:8766/callback' 'http://localhost:8765/callback' 'http://127.0.0.1:8765/callback/x' \
+	'https://smoke.example/callback/' 'https://smoke.example/callbackx' 'https://smoke.example/Callback'; do
+	sOut=$(cc_authorize "$sUri")
+	[ "$sOut" = '400 ' ] || { rm -f "$JAR"; fail "authorize did not refuse $sUri for a hand-made client: $sOut"; }
+done
+echo "   ok  a hand-made client's callback must match exactly: another port, host, path, case or a trailing slash is refused"
+
 # The person disconnects from My Account. The form there posts a transaction id of their
 # session; any page of the session hands one out, and an unanswered consent page is one.
 sLoc=$(authorize)
