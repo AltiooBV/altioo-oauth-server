@@ -1,6 +1,6 @@
 # Testing a hand-configured client on a real instance
 
-0.1.0 was tested on itop.altioo.com with Claude Code, Claude Desktop and claude.ai, which
+0.1.0 was tested on a real instance with Claude Code, Claude Desktop and claude.ai, which
 connect themselves. **No client configured by hand has been tried on a real instance**; only the
 automated HTTP checks play one (`tools/ci/checks/http-smoke.sh`). This is the procedure for the
 two candidates [ADR 0009](adr/0009-rest-json-clients-in-1-0.md) names: **Postman** and **a script
@@ -8,7 +8,9 @@ over a fixed loopback port**. It is a checklist to run, not a record of a run: t
 at the end is empty until someone fills it in, and the README and CHANGELOG keep saying "not
 tested" until then.
 
-Run it on itop.altioo.com, against REST/JSON, with a throwaway account. About half an hour.
+Run it on a real instance (the maintainer's is itop.altioo.com), against REST/JSON, with a
+throwaway account. About half an hour. `doc/` ships in the release archive, so keep what is
+written here true for any instance.
 
 ## Before you start
 
