@@ -1,8 +1,10 @@
 # 0010 — Client ID metadata documents: not in 1.0, with the conditions to revisit
 
 - Date: 2026-11-09
-- Decided by: pending — Guy Couronne
-- Status: proposed
+- Decided by: Guy Couronne
+- Status: accepted
+
+Decided on 2026-11-09: option A below, in the maintainer's words "CIMD out".
 
 Answers the "for 1.0" half of [ADR 0005](0005-no-client-id-metadata-documents-in-0-1.md).
 

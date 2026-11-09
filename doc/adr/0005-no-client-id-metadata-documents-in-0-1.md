@@ -21,7 +21,9 @@ does not advertise `client_id_metadata_document_supported`. The reasons:
 - CIMD would bring the module's first outbound request, which needs its own design.
 
 Revisit this when a client this module targets stops falling back to dynamic registration, or
-for 1.0, whichever comes first. Whoever builds it starts from these constraints:
+for 1.0, whichever comes first. The "for 1.0" half was answered on 2026-11-09 by
+[ADR 0010](0010-client-id-metadata-documents-not-in-1-0.md): not in 1.0, with the conditions
+that reopen it. Whoever builds it starts from these constraints:
 
 - **An outbound fetch.** `doc/security-summary.md` then no longer says "Outbound connections:
   none", and the README's requirements name the outbound access the instance needs.
