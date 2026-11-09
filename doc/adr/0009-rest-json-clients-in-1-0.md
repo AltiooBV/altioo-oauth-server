@@ -1,8 +1,10 @@
 # 0009 — Which REST/JSON clients 1.0 targets, and what that adds to the allowlist
 
 - Date: 2026-11-09
-- Decided by: pending — Guy Couronne
-- Status: proposed
+- Decided by: Guy Couronne
+- Status: accepted
+
+Decided on 2026-11-09: option A below, in the maintainer's words "Accept 0009 A".
 
 Closes the open question in [ADR 0003](0003-generic-from-the-first-release.md): which REST/JSON
 clients 1.0 targets, and which redirect URIs that adds to the allowlist.

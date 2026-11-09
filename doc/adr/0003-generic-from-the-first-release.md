@@ -22,8 +22,9 @@ A call against iTop 3.2.3-3 on 2026-10-30 settled what `rest.php` does with a cl
   read as a Basic header and refused. A client that can send only that cannot use its token on
   REST/JSON.
 
-Still open: which REST/JSON clients 1.0 targets, and which redirect URIs that adds to the
-allowlist. REST/JSON is a single scope, so its consent screen offers no grade.
+Which REST/JSON clients 1.0 targets, and what that adds to the allowlist, is settled by
+[ADR 0009](0009-rest-json-clients-in-1-0.md): none is a default target, and nothing is added.
+REST/JSON is a single scope, so its consent screen offers no grade.
 
 Rejected: MCP only in 1.0, with REST/JSON later.
 

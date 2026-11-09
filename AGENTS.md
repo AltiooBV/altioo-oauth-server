@@ -48,6 +48,9 @@ Each line points at its record in `doc/adr/`. Read the record before arguing wit
   the token, and a removed resource matches no URL (ADR 0007).
 - A resource is named by its `label` wherever a connection appears, and the consent page also
   gives its URL (ADR 0008).
+- No REST/JSON client is a default target, and no REST/JSON client's callback goes into
+  `DEFAULT_REDIRECT_URIS`: such a client is one an administrator creates, which is its own
+  allowlist (ADR 0009).
 - 1.0 has no client ID metadata documents either, on ADR 0005's line. Revisit only on the
   conditions listed in ADR 0010, not because a client prefers them (ADR 0010).
 
