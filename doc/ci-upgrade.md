@@ -48,7 +48,7 @@ upgrade must not lose. Without one, the seed and verify steps skip and the upgra
 checked by `itop-smoke.php` and the integration suite alone — which is the whole of it for an
 extension that stores nothing.
 
-This extension's seeds what its header lists, and both its modes then use the connection over HTTP,
+This extension's fixture seeds what its header lists, and both its modes then use the connection over HTTP,
 as its client would: a change that leaves every row in place and refuses every refresh fails here too.
 
 What tends to earn a row, and what its loss would mean:
