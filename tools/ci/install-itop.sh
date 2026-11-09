@@ -129,6 +129,22 @@ rsync -a --delete \
   "$MODULE_SRC/" "$ITOP_DIR/extensions/$MODULE_CODE/"
 test -f "$ITOP_DIR/extensions/$MODULE_CODE/vendor/autoload.php" \
   || { echo "vendor/ is missing - run composer install --no-dev first"; exit 1; }
+
+# Stand-ins for modules this one only meets at run time: tools/ci/fixtures/<module code>/, each
+# a module of its own (module.<code>.php), placed in extensions/ beside this one. They are CI's,
+# so tools/ never reaches the release archive and nothing here is shipped. A working copy
+# without the directory, such as an older baseline of upgrade.yml, installs none.
+FIXTURE_CODES=()
+for sFixture in "$MODULE_SRC"/tools/ci/fixtures/*/; do
+  [ -f "${sFixture}extension.xml" ] || continue
+  sFixtureCode=$(sed -n 's#.*<extension_code>\(.*\)</extension_code>.*#\1#p' "${sFixture}extension.xml" | head -1)
+  test -f "${sFixture}module.${sFixtureCode}.php" \
+    || { echo "::error::${sFixture} has an extension.xml but no module.${sFixtureCode}.php"; exit 1; }
+  mkdir -p "$ITOP_DIR/extensions/$sFixtureCode"
+  rsync -a --delete "$sFixture" "$ITOP_DIR/extensions/$sFixtureCode/"
+  FIXTURE_CODES+=("$sFixtureCode")
+  echo "stand-in module placed: $sFixtureCode"
+done
 echo "::endgroup::"
 
 echo "::group::Unattended install"
@@ -304,5 +320,15 @@ EXTENSION_SOURCE=$(itop_sql "SELECT source FROM \`${DB_PREFIX}priv_extension_ins
 # 3. And the code is where iTop loads it from at runtime.
 [ -d "$ITOP_DIR/env-production/$MODULE_CODE" ] \
   || fail "env-production/$MODULE_CODE does not exist - the module was recorded as installed but not compiled"
+
+# A stand-in the setup skipped would turn every check that needs it into a silent absence.
+for sFixtureCode in "${FIXTURE_CODES[@]+"${FIXTURE_CODES[@]}"}"; do
+  FIXTURE_INSTALLED=$(itop_sql "SELECT COUNT(*) FROM \`${DB_PREFIX}priv_module_install\`
+	WHERE name = '$sFixtureCode' AND installed IS NOT NULL") \
+	|| fail "could not read ${DB_PREFIX}priv_module_install"
+  [ "${FIXTURE_INSTALLED:-0}" -ge 1 ] || fail "the stand-in module $sFixtureCode was placed but not installed"
+  [ -d "$ITOP_DIR/env-production/$sFixtureCode" ] \
+    || fail "env-production/$sFixtureCode does not exist - the stand-in was recorded as installed but not compiled"
+done
 
 echo "$MODULE_CODE $INSTALLED_VERSION installed at $ITOP_DIR"

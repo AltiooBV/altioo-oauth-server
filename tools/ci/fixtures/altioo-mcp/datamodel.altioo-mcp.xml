@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<itop_design xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.2">
+  <!--
+    What altioo-mcp registers that altioo-oauth-server's `mcp` resource depends on, copied from
+    its datamodel and nothing more: the token scopes the resource is built from, and the gate
+    profile it requires. The toolset scopes are left out, since the resource does not offer them.
+  -->
+  <classes>
+    <class id="PersonalToken" _delta="if_exists">
+      <fields>
+        <field id="scope" _delta="if_exists">
+          <values>
+            <value id="MCP" _delta="define">
+              <code>MCP</code>
+            </value>
+            <value id="MCP-read" _delta="define">
+              <code>MCP-read</code>
+            </value>
+            <value id="MCP-write" _delta="define">
+              <code>MCP-write</code>
+            </value>
+            <value id="MCP-delete" _delta="define">
+              <code>MCP-delete</code>
+            </value>
+            <value id="MCP-advisory" _delta="define">
+              <code>MCP-advisory</code>
+            </value>
+          </values>
+        </field>
+      </fields>
+    </class>
+    <class id="UserToken" _delta="if_exists">
+      <fields>
+        <field id="scope" _delta="if_exists">
+          <values>
+            <value id="MCP" _delta="define">
+              <code>MCP</code>
+            </value>
+            <value id="MCP-read" _delta="define">
+              <code>MCP-read</code>
+            </value>
+            <value id="MCP-write" _delta="define">
+              <code>MCP-write</code>
+            </value>
+            <value id="MCP-delete" _delta="define">
+              <code>MCP-delete</code>
+            </value>
+            <value id="MCP-advisory" _delta="define">
+              <code>MCP-advisory</code>
+            </value>
+          </values>
+        </field>
+      </fields>
+    </class>
+  </classes>
+  <user_rights>
+    <profiles>
+      <profile id="2100" _delta="define">
+        <name>MCP Services User</name>
+        <description>Only users having this profile are allowed to use the MCP services.</description>
+        <groups/>
+      </profile>
+    </profiles>
+  </user_rights>
+</itop_design>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension format="1.0">
+  <extension_code>altioo-mcp</extension_code>
+  <version>0.0.1</version>
+  <label><![CDATA[altioo-mcp stand-in (CI only)]]></label>
+  <description><![CDATA[Not altioo-mcp. A CI fixture of altioo-oauth-server that registers the MCP token scopes and a Bearer endpoint, so the MCP grant is exercised without installing the real module.]]></description>
+  <mandatory>false</mandatory>
+  <more_info_url>https://github.com/AltiooBV/altioo-oauth-server</more_info_url>
+</extension>
