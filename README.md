@@ -96,10 +96,27 @@ callback URL:
 | Scope | The scopes to ask for, separated by spaces: `REST/JSON`, or for altioo-mcp `MCP-read`, `MCP-write`... The person can still grant less on the consent page. |
 
 A client created this way skips the `redirect_uris` allowlist: the administrator who created it
-is the allowlist. Clients that register through a client ID metadata document (CIMD) are not
-supported yet, although the MCP specification's latest revision prefers them to dynamic
-registration, which it keeps for backwards compatibility. A client that offers only CIMD cannot
-connect itself here ([ADR 0005](doc/adr/0005-no-client-id-metadata-documents-in-0-1.md)).
+is the allowlist. It therefore matches a redirect URI exactly, byte for byte.
+
+**REST/JSON from a client configured by hand** ([ADR 0009](doc/adr/0009-rest-json-clients-in-1-0.md)):
+
+- It needs a client an administrator creates, as above: `rest.php` does not announce this server,
+  so no REST/JSON client registers itself. It must be able to send the token as an `Auth-Token`
+  header, which is what `rest.php` reads, not as `Authorization: Bearer`.
+- A loopback callback, for a script, must use a fixed port, typed exactly as the client will send
+  it: `http://127.0.0.1:8765/callback` is not `http://localhost:8765/callback` and not another
+  port. Only a client that registered itself gets the any-port loopback rule, and only with
+  `allow_loopback`.
+- `auth_token` as a URL parameter is the last resort, because a URL ends up in access logs. Use
+  the header, or a POST body.
+- No REST/JSON client has been tested yet. [doc/manual-test-hand-configured-client.md](doc/manual-test-hand-configured-client.md)
+  is the procedure for trying Postman and a script, and the results table in it is empty.
+
+Clients that register through a client ID metadata document (CIMD) are not supported, although
+the MCP specification's latest revision prefers them to dynamic registration, which it keeps for
+backwards compatibility. A client that offers only CIMD cannot connect itself here
+([ADR 0005](doc/adr/0005-no-client-id-metadata-documents-in-0-1.md),
+[ADR 0010](doc/adr/0010-client-id-metadata-documents-not-in-1-0.md)).
 
 ## How a connection is made
 

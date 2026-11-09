@@ -68,22 +68,44 @@ absolute() {
 	fi
 }
 
+# Every working tree of this repository: the main checkout and each linked
+# worktree, which may sit inside it (.claude/worktrees/<name>) or elsewhere. The
+# hook runs from the project directory of the session that started it, so its
+# ROOT is whichever checkout that was; a session working in another worktree
+# reads, and edits, that worktree's copy of the files. Without this list the
+# guide read there never matched ROOT's, and the gate stayed shut for good.
+# Falls back to ROOT alone when git cannot say.
+worktree_roots() {
+	printf '%s\n' "$ROOT"
+	git -C "$ROOT" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p'
+}
+
 case "$MODE" in
 record)
 	sRead="$(absolute "$sFilePath")" || exit 0
-	if [ "$sRead" = "$(readlink -f "$GUIDE" 2>/dev/null || printf '%s' "$GUIDE")" ]; then
-		mkdir -p "$MARKER_DIR" && : > "$sMarker"
-	fi
+	# Only the guide counts, in any worktree: no other file, and no path that
+	# merely ends in the same name.
+	while IFS= read -r sTree; do
+		[ -n "$sTree" ] || continue
+		if [ "$sRead" = "$(readlink -f "$sTree/doc/itop-extension-guide.md" 2>/dev/null || printf '%s' "$sTree/doc/itop-extension-guide.md")" ]; then
+			mkdir -p "$MARKER_DIR" && : > "$sMarker"
+			break
+		fi
+	done < <(worktree_roots)
 	exit 0
 	;;
 gate)
 	[ -f "$sMarker" ] && exit 0
 
 	sTarget="$(absolute "$sFilePath")" || exit 0
-	case "$sTarget" in
-		"$ROOT"/*) ;;
-		*) exit 0 ;;
-	esac
+	bInside=0
+	while IFS= read -r sTree; do
+		[ -n "$sTree" ] || continue
+		case "$sTarget" in
+			"$sTree"/*) bInside=1; break ;;
+		esac
+	done < <(worktree_roots)
+	[ "$bInside" -eq 1 ] || exit 0
 
 	jq -n --arg reason "$(
 		cat <<-REASON
