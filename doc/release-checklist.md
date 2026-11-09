@@ -40,13 +40,20 @@ not repeat these — *Every release* below is the recurring list.
       public client and as a confidential one, refresh in place, the grace period, Disconnect).
       Adapt [ci-itop-matrix.md](ci-itop-matrix.md), [ci-upgrade.md](ci-upgrade.md) and this
       file to what they assert. Delete a row that does not apply.
-- [ ] **Write `tools/ci/upgrade-fixture.php`** once 0.1.0 is tagged: the upgrade workflow
+- [x] **Write `tools/ci/upgrade-fixture.php`** once 0.1.0 is tagged: the upgrade workflow
       installs the previous release and upgrades it, and until there is one there is nothing
       to seed. It must seed a client, an active connection and its token, and check after the
       upgrade that the connection still refreshes. Until then `upgrade.yml` proves the setup, not
       the data: on 2026-11-04, run 41875576197 upgraded from `3c3b97f` to `66fc12b` and skipped
       its seeding and *Is everything still there* steps. The maintainer saw connections from
       earlier builds still active in the console of itop.altioo.com.
+      2026-11-09: written and run locally, in Docker, on iTop 3.2.3-3 / PHP 8.2: `v0.1.0`
+      installed, seeded, upgraded to the working copy, verified, upgraded again, verified
+      again — all checks green, the connection refreshing over HTTP each time. With a row
+      edited by hand the fixture fails and names it. **Not proved:** a run of `upgrade.yml` on
+      Actions with it, and any upgrade across a real migration — `v0.1.0` and the working copy
+      are the same version, so the setup only re-applied it. Re-open this line when a
+      change first alters the schema or the version.
 - [x] **Clean up after the flow.** 2026-10-28: `src/Service/CleanUpProcess.php`, hourly.
 - [x] **Let an administrator revoke a connection** from the console, and the person from My
       Account. 2026-10-28: the Revoke stimulus on `AltiooOAuthGrant`, and *Connected
