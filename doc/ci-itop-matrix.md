@@ -152,9 +152,40 @@ this one, and fails if the setup did not install it. There is one, `tools/ci/fix
   accepted at its URL and refused at another portal's (`?portal_id=`), a REST/JSON token refused
   at the MCP endpoint and the reverse, and the resource's metadata.
 - **What it does not.** How the real altioo-mcp reads a token, and whether the two modules still
-  agree after either one changes. A scheduled job that installs a released altioo-mcp instead of
-  the stand-in would, and is a follow-up: it needs a public, checksummed altioo-mcp archive to
-  pin, and it fails for altioo-mcp's changes as well as this module's.
+  agree after either one changes. The weekly job below does.
+
+## The real altioo-mcp, weekly
+
+The `mcp-release` job of `itop-matrix.yml` runs on the Monday schedule and on `workflow_dispatch`,
+never on a pull request, and is `continue-on-error`: a change in altioo-mcp cannot block a change
+here. It repeats the install job's steps with two differences. `tools/ci/fetch-altioo-mcp.sh`
+downloads the release pinned in `tools/ci/altioo-mcp-release.env` (version and SHA-256, moved by
+hand), checks the archive against the pin and the published `.sha256`, and in CI verifies its
+GitHub attestation against `AltiooBV/altioo-mcp`; and `install-itop.sh`, given
+`FIXTURE_RELEASES_DIR`, places that module in `extensions/` instead of the stand-in, so the
+stand-in is not installed at all and the recorded version of what was installed must be the
+release's. `module-smoke.php` then holds the `mcp` resource against the real module's scopes, and
+`http-smoke.sh` runs with `MCP_UNDER_TEST=release`, which refuses to run if the endpoint it finds
+is the stand-in.
+
+- **What it covers beyond the stand-in.** The real endpoint's reading of a Bearer token over
+  MCP (`initialize` and `tools/list`, not the stand-in's GET): a granted token is let in, the
+  read-only grade is served the reading tools and none that writes, a portal-only token is served
+  tools, a token refused at another `?portal_id=` URL and a REST/JSON token refused at the
+  endpoint, a 401 carrying the resource's metadata URL; so `TokenAudience` and `ResourceMetadata`
+  are called by the module that owns the calls.
+- **What the first run found, and the checks now say.** altioo-mcp sends a URL with no resource of
+  its own to the default metadata, where the stand-in sends none; it logs a token in through iTop,
+  so authent-token's allowed profiles apply at every call (the smoke keeps its configuration
+  override until the portal call is made); and in portal mode it refuses an account linked to no
+  contact, so the portal fixture account has one.
+- **What it does not.** Any altioo-mcp release other than the pinned one: a new release is not
+  tried until someone moves the pin, and a red run after moving it is the finding. Nor altioo-mcp's
+  own suite, which is its repository's.
+- **Running it by hand.** `tools/ci/fetch-altioo-mcp.sh <dir>`, then
+  `FIXTURE_RELEASES_DIR=<dir> tools/ci/install-itop.sh`, then
+  `MCP_UNDER_TEST=release tools/ci/http-smoke.sh` as the install job runs it. The attestation is
+  checked only where `gh` has the `attestation` command and is signed in; CI requires it.
 
 ## An upstream test that does not exist
 
@@ -215,8 +246,8 @@ php vendor/bin/phpunit --no-configuration --bootstrap unittestautoload.php --tes
 
 ## What this does not check
 
-- **The real altioo-mcp.** The MCP grant is exercised against the stand-in above, which agrees
-  with this module by construction. See that section for what that leaves.
+- **The real altioo-mcp, on pull requests.** They exercise the stand-in above, which agrees with
+  this module by construction; the real, pinned release is exercised weekly, not per change.
 - **A web server's configuration.** The HTTP smoke uses PHP's built-in server, so it checks the
   application, not Apache or IIS. That `.htaccess` and `web.config` keep `src/`, `tests/` and
   `vendor/` unreachable is a manual step in the [release checklist](release-checklist.md).

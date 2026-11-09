@@ -513,9 +513,39 @@ if [ "$sNoMcpLogin" != '-' ]; then
 			--data-urlencode "redirect_uri=$CALLBACK" --data-urlencode "code_verifier=$sVerifier" \
 			--data-urlencode "resource=$MCP" "$ENDPOINT?route=token"
 	}
-	mcp_call() { # <url> <access token> -> the status and the body
-		curl -sS -w '\n%{http_code}' -H "Authorization: Bearer $2" "$1"
+	# The stand-in answers a GET with the token's login and scopes. The real altioo-mcp
+	# (MCP_UNDER_TEST=release, the weekly contract job) speaks MCP: a JSON-RPC POST, and whether a
+	# token was let in reads from an initialize that succeeds, the grade from what tools/list serves.
+	MCP_UNDER_TEST="${MCP_UNDER_TEST:-stand-in}"
+	MCP_INDEX="$ITOP_DIR/env-production/altioo-mcp/index.php"
+	case "$MCP_UNDER_TEST" in
+		stand-in) grep -q STAND_IN_AUDIENCE "$MCP_INDEX" || { rm -f "$JAR"; fail "MCP_UNDER_TEST=stand-in, but $MCP_INDEX is not the stand-in"; } ;;
+		release) ! grep -q STAND_IN_AUDIENCE "$MCP_INDEX" || { rm -f "$JAR"; fail "MCP_UNDER_TEST=release, but $MCP_INDEX is the stand-in"; } ;;
+		*) rm -f "$JAR"; fail "MCP_UNDER_TEST is '$MCP_UNDER_TEST': stand-in or release" ;;
+	esac
+	echo "   --  the MCP endpoint under test is the $MCP_UNDER_TEST"
+	mcp_rpc() { # <url> <access token> <method> [curl options] -> the status and the body
+		local sUrl=$1 sToken=$2 sMethod=$3; shift 3
+		curl -sS "$@" -w '\n%{http_code}' -H "Authorization: Bearer $sToken" -H 'Content-Type: application/json' \
+			-H 'Accept: application/json, text/event-stream' \
+			--data "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"$sMethod\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{},\"clientInfo\":{\"name\":\"altioo-oauth-server-ci\",\"version\":\"0\"}}}" "$sUrl"
 	}
+	mcp_tools() { # <url> <access token> -> the status and the body of tools/list, in a session of its own
+		local sHeaders sSession
+		sHeaders=$(mktemp)
+		mcp_rpc "$1" "$2" initialize -D "$sHeaders" >/dev/null
+		sSession=$(sed -n 's/^[Mm]cp-[Ss]ession-[Ii]d: *\([^[:space:]]*\).*/\1/p' "$sHeaders" | head -1)
+		rm -f "$sHeaders"
+		mcp_rpc "$1" "$2" tools/list -H "Mcp-Session-Id: $sSession"
+	}
+	mcp_call() { # <url> <access token> -> the status and the body
+		if [ "$MCP_UNDER_TEST" = release ]; then
+			mcp_rpc "$1" "$2" initialize
+		else
+			curl -sS -w '\n%{http_code}' -H "Authorization: Bearer $2" "$1"
+		fi
+	}
+	if [ "$MCP_UNDER_TEST" = release ]; then MCP_ACCEPTED='"protocolVersion"'; else MCP_ACCEPTED='"ok":true'; fi
 
 	sPrm=$(curl -sS "$ENDPOINT?route=protected-resource&for=mcp")
 	expect "the MCP resource's metadata names its URL" "$sPrm" "\"resource\":\"$MCP\""
@@ -525,8 +555,15 @@ if [ "$sNoMcpLogin" != '-' ]; then
 	expect "a call without a token is a 401" "$sOut" ' 401'
 	expect "that names the resource's metadata" "$sOut" "resource_metadata=\"$ENDPOINT?route=protected-resource&for=mcp\""
 	sOut=$(curl -sS -D - -o /dev/null "$MCP?portal_id=itop-portal")
-	case "$sOut" in *resource_metadata*) rm -f "$JAR"; fail "a URL no resource is configured for was given a metadata URL: $sOut" ;; esac
-	echo "   ok  another URL of the same endpoint is sent to no metadata"
+	if [ "$MCP_UNDER_TEST" = release ]; then
+		# Found by the first run against the real module: altioo-mcp falls back to the default
+		# metadata URL when ResourceMetadata::UrlFor knows none for the URL called
+		# (MCPHelper::protectedResourceMetadataUrl), where the stand-in sends no metadata at all.
+		expect "another URL of the same endpoint is sent to the default metadata, altioo-mcp's fallback" "$sOut" "resource_metadata=\"$ENDPOINT?route=protected-resource&for=mcp\""
+	else
+		case "$sOut" in *resource_metadata*) rm -f "$JAR"; fail "a URL no resource is configured for was given a metadata URL: $sOut" ;; esac
+		echo "   ok  another URL of the same endpoint is sent to no metadata"
+	fi
 
 	# An administrator, who has the console: the four grades and the limit, then read only.
 	sLoc=$(mcp_authorize "$JAR" "$MCP")
@@ -542,8 +579,16 @@ if [ "$sNoMcpLogin" != '-' ]; then
 	sMcpAccess=$(printf '%s' "$sTok" | json_field access_token)
 	[ -n "$sMcpAccess" ] || { rm -f "$JAR"; fail "the MCP grant issued no token: ${sTok:0:300}"; }
 	sOut=$(mcp_call "$MCP" "$sMcpAccess")
-	expect "the MCP token is accepted at its URL" "$sOut" '"ok":true'
-	expect "and carries the grade chosen, read" "$sOut" '"scopes":["MCP-read"]'
+	expect "the MCP token is accepted at its URL" "$sOut" "$MCP_ACCEPTED"
+	if [ "$MCP_UNDER_TEST" = release ]; then
+		# The grade shows in what is served: a read-only token lists the reading tools and none that writes.
+		sOut=$(mcp_tools "$MCP" "$sMcpAccess")
+		expect "and carries the grade chosen, read: it is served the reading tools" "$sOut" 'core_object_get'
+		case "$sOut" in *core_object_create*|*core_object_delete*) rm -f "$JAR"; fail "a read-only MCP token is served a tool that writes: ${sOut:0:300}" ;; esac
+		echo "   ok  and none that writes"
+	else
+		expect "and carries the grade chosen, read" "$sOut" '"scopes":["MCP-read"]'
+	fi
 	sOut=$(mcp_call "$MCP?portal_id=itop-portal" "$sMcpAccess")
 	expect "the same token is refused at another portal's URL" "$sOut" '401'
 	expect "with the reason" "$sOut" 'another URL of this endpoint'
@@ -580,6 +625,15 @@ if [ "$sNoMcpLogin" != '-' ]; then
 	sConsent=$(mcp_sign_in "$PORTAL_JAR" "$sPortalLogin" "$sPortalPassword" "$sLoc")
 	sTok=$(mcp_allow "$PORTAL_JAR" "$sLoc" "$sConsent" 1)
 	rm -f "$PORTAL_JAR"
+	# The real altioo-mcp logs the token in through iTop, which asks authent-token again at every
+	# call whether the account's profile may own a personal token; the stand-in decodes the token
+	# itself and never asks. So the call is made before the file is put back, and judged after.
+	sPortalAccess=$(printf '%s' "$sTok" | json_field access_token)
+	sPortalCall= sPortalTools=
+	if [ -n "$sPortalAccess" ]; then
+		sPortalCall=$(mcp_call "$MCP" "$sPortalAccess")
+		[ "$MCP_UNDER_TEST" != release ] || sPortalTools=$(mcp_tools "$MCP" "$sPortalAccess")
+	fi
 	mv -f "$CONF.mcp-orig" "$CONF"
 
 	expect "an account without a profile the MCP resource requires is told so before consent" "$sNoMcpOut" 'Not available for your account'
@@ -591,11 +645,14 @@ if [ "$sNoMcpLogin" != '-' ]; then
 	done
 	echo "   ok  and nothing wider than that"
 	expect "and the limit it may still apply" "$sConsent" 'Only propose changes, never make them'
-	sPortalAccess=$(printf '%s' "$sTok" | json_field access_token)
 	[ -n "$sPortalAccess" ] || { rm -f "$JAR"; fail "the portal-only MCP grant issued no token: ${sTok:0:300}"; }
-	sOut=$(mcp_call "$MCP" "$sPortalAccess")
-	expect "its token is accepted at the MCP URL" "$sOut" '"ok":true'
-	expect "and carries the whole-portal scope" "$sOut" '"scopes":["MCP"]'
+	sOut=$sPortalCall
+	expect "its token is accepted at the MCP URL" "$sOut" "$MCP_ACCEPTED"
+	if [ "$MCP_UNDER_TEST" = release ]; then
+		expect "and carries the whole-portal scope: it is served tools" "$sPortalTools" '"tools"'
+	else
+		expect "and carries the whole-portal scope" "$sOut" '"scopes":["MCP"]'
+	fi
 fi
 
 # An account the REST/JSON resource would refuse is refused before consent, with a reason.

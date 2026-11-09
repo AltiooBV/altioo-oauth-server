@@ -134,16 +134,29 @@ test -f "$ITOP_DIR/extensions/$MODULE_CODE/vendor/autoload.php" \
 # a module of its own (module.<code>.php), placed in extensions/ beside this one. They are CI's,
 # so tools/ never reaches the release archive and nothing here is shipped. A working copy
 # without the directory, such as an older baseline of upgrade.yml, installs none.
+#
+# FIXTURE_RELEASES_DIR, when set, holds real modules to place instead: a <code>/ there replaces
+# the stand-in of the same code, which is then not installed at all. The weekly contract job
+# fills it with tools/ci/fetch-altioo-mcp.sh. Each one is checked below at the version its own
+# extension.xml declares, so a stand-in left over from an earlier run cannot pass for it.
+FIXTURE_RELEASES_DIR="${FIXTURE_RELEASES_DIR:-}"
 FIXTURE_CODES=()
+FIXTURE_VERSIONS=()
 for sFixture in "$MODULE_SRC"/tools/ci/fixtures/*/; do
   [ -f "${sFixture}extension.xml" ] || continue
   sFixtureCode=$(sed -n 's#.*<extension_code>\(.*\)</extension_code>.*#\1#p' "${sFixture}extension.xml" | head -1)
+  sKind="stand-in"
+  if [ -n "$FIXTURE_RELEASES_DIR" ] && [ -d "$FIXTURE_RELEASES_DIR/$sFixtureCode" ]; then
+    sFixture="$FIXTURE_RELEASES_DIR/$sFixtureCode/"
+    sKind="released"
+  fi
   test -f "${sFixture}module.${sFixtureCode}.php" \
     || { echo "::error::${sFixture} has an extension.xml but no module.${sFixtureCode}.php"; exit 1; }
   mkdir -p "$ITOP_DIR/extensions/$sFixtureCode"
   rsync -a --delete "$sFixture" "$ITOP_DIR/extensions/$sFixtureCode/"
   FIXTURE_CODES+=("$sFixtureCode")
-  echo "stand-in module placed: $sFixtureCode"
+  FIXTURE_VERSIONS+=("$(sed -n 's#.*<version>\(.*\)</version>.*#\1#p' "${sFixture}extension.xml" | head -1)")
+  echo "$sKind module placed: $sFixtureCode ${FIXTURE_VERSIONS[-1]}"
 done
 echo "::endgroup::"
 
@@ -322,11 +335,14 @@ EXTENSION_SOURCE=$(itop_sql "SELECT source FROM \`${DB_PREFIX}priv_extension_ins
   || fail "env-production/$MODULE_CODE does not exist - the module was recorded as installed but not compiled"
 
 # A stand-in the setup skipped would turn every check that needs it into a silent absence.
-for sFixtureCode in "${FIXTURE_CODES[@]+"${FIXTURE_CODES[@]}"}"; do
-  FIXTURE_INSTALLED=$(itop_sql "SELECT COUNT(*) FROM \`${DB_PREFIX}priv_module_install\`
-	WHERE name = '$sFixtureCode' AND installed IS NOT NULL") \
+for i in "${!FIXTURE_CODES[@]}"; do
+  sFixtureCode=${FIXTURE_CODES[$i]}
+  FIXTURE_INSTALLED=$(itop_sql "SELECT version FROM \`${DB_PREFIX}priv_module_install\`
+	WHERE name = '$sFixtureCode' AND installed IS NOT NULL ORDER BY installed DESC LIMIT 1") \
 	|| fail "could not read ${DB_PREFIX}priv_module_install"
-  [ "${FIXTURE_INSTALLED:-0}" -ge 1 ] || fail "the stand-in module $sFixtureCode was placed but not installed"
+  [ -n "$FIXTURE_INSTALLED" ] || fail "the module $sFixtureCode was placed but not installed"
+  [ "$FIXTURE_INSTALLED" = "${FIXTURE_VERSIONS[$i]}" ] \
+    || fail "$sFixtureCode is installed at $FIXTURE_INSTALLED, but the copy placed declares ${FIXTURE_VERSIONS[$i]}"
   [ -d "$ITOP_DIR/env-production/$sFixtureCode" ] \
     || fail "env-production/$sFixtureCode does not exist - the stand-in was recorded as installed but not compiled"
 done

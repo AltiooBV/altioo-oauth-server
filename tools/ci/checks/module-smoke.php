@@ -262,7 +262,7 @@ check('the account without REST Services User is refused by the REST/JSON resour
 // Two accounts for the MCP resource's checks over HTTP, when it is there: one it refuses for want
 // of a profile (a console account holding neither Administrator nor MCP Services User), and one
 // with the portal and no console, holding the gate profile, which it offers portal grades.
-$fnAccount = static function (string $sPrefix, array $aProfileNames): array {
+$fnAccount = static function (string $sPrefix, array $aProfileNames, bool $bWithContact = false): array {
 	$sLogin = $sPrefix.bin2hex(random_bytes(4));
 	$sPassword = 'Aa1!'.bin2hex(random_bytes(12));
 	$oUser = MetaModel::NewObject('UserLocal', ['login' => $sLogin, 'language' => 'EN US', 'expiration' => 'never_expire']);
@@ -275,6 +275,15 @@ $fnAccount = static function (string $sPrefix, array $aProfileNames): array {
 		]));
 	}
 	$oUser->Set('profile_list', $oLinks);
+	if ($bWithContact) {
+		// An iTop portal needs the account linked to a person, and the real altioo-mcp refuses a
+		// portal account without one; the stand-in never asks.
+		$oOrg = MetaModel::GetObjectFromOQL('SELECT Organization', null, true);
+		$oPerson = MetaModel::NewObject('Person', ['name' => $sLogin, 'first_name' => 'Smoke', 'org_id' => $oOrg->GetKey()]);
+		$oPerson->AllowWrite();
+		$oPerson->DBInsert();
+		$oUser->Set('contactid', $oPerson->GetKey());
+	}
 	$oUser->AllowWrite();
 	$oUser->DBInsert();
 
@@ -285,7 +294,7 @@ if (isset($aResources['mcp'])) {
 	[$sNoMcpLogin, $sNoMcpPassword, $oNoMcp] = $fnAccount('smoke-nomcp-', ['Configuration Manager']);
 	check('a console account without a profile the MCP resource requires is refused by it', !$aResources['mcp']->AllowsUser($oNoMcp)
 		&& Altioo\iTop\Extension\OAuthServer\Service\Accounts::HasConsole($oNoMcp));
-	[$sPortalLogin, $sPortalPassword, $oPortalOnly] = $fnAccount('smoke-portal-', ['Portal user', 'MCP Services User']);
+	[$sPortalLogin, $sPortalPassword, $oPortalOnly] = $fnAccount('smoke-portal-', ['Portal user', 'MCP Services User'], true);
 	check('an account with the portal and the gate profile has no console', !Altioo\iTop\Extension\OAuthServer\Service\Accounts::HasConsole($oPortalOnly));
 	check('and the MCP resource accepts it', $aResources['mcp']->AllowsUser($oPortalOnly));
 }
