@@ -7,6 +7,10 @@
 Closes the open question in [ADR 0003](0003-generic-from-the-first-release.md): which REST/JSON
 clients 1.0 targets, and which redirect URIs that adds to the allowlist.
 
+**This ADR covers REST/JSON clients only.** MCP clients such as Claude, ChatGPT and Cursor keep
+registering dynamically against `redirect_uris`, where Claude's callbacks are already defaults,
+and Claude Code also needs `allow_loopback`. Nothing here changes that list.
+
 ## What the research found
 
 Read on 2026-11-09, vendor documentation only, with what was not established listed as such.
