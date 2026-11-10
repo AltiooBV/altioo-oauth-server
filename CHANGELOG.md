@@ -7,6 +7,11 @@ installable.
 
 ## [Unreleased]
 
+Tested on itop.altioo.com (iTop 3.2.3-2, 0.1.0 installed) with a client configured by hand: a
+script over a fixed loopback port calling REST/JSON, through consent, refresh, the grace period,
+reuse, a refused account, near-miss callbacks and the three ways to end a connection
+(`doc/manual-test-hand-configured-client.md`). Postman has not been tried.
+
 ## [0.1.0] - 2026-11-04
 
 The first release. Installed from a CI-built archive on itop.altioo.com (iTop 3.2.3-2, PHP 8.4.27)

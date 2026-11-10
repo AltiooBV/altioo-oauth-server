@@ -1,12 +1,11 @@
 # Testing a hand-configured client on a real instance
 
 0.1.0 was tested on a real instance with Claude Code, Claude Desktop and claude.ai, which
-connect themselves. **No client configured by hand has been tried on a real instance**; only the
-automated HTTP checks play one (`tools/ci/checks/http-smoke.sh`). This is the procedure for the
-two candidates [ADR 0009](adr/0009-rest-json-clients-in-1-0.md) names: **Postman** and **a script
-over a fixed loopback port**. It is a checklist to run, not a record of a run: the results table
-at the end is empty until someone fills it in, and the README and CHANGELOG keep saying "not
-tested" until then.
+connect themselves. This is the procedure for a client configured by hand, for the two
+candidates [ADR 0009](adr/0009-rest-json-clients-in-1-0.md) names: **Postman** and **a script
+over a fixed loopback port**. The automated HTTP checks play such a client too
+(`tools/ci/checks/http-smoke.sh`). The results table at the end records what was run: the
+script on 2026-11-10, Postman not yet.
 
 Run it on a real instance (the maintainer's is itop.altioo.com), against REST/JSON, with a
 throwaway account. About half an hour. `doc/` ships in the release archive, so keep what is
@@ -15,8 +14,10 @@ written here true for any instance.
 ## Before you start
 
 - **A test account** that is not an administrator, with the *REST Services User* profile, or on
-  an instance where `allow_rest_services_via_tokens` is set. The consent page refuses an account
-  `rest.php` would refuse, with a reason: that refusal is part of what to look at once (step 6).
+  an instance where `allow_rest_services_via_tokens` is set. An administrator needs the profile
+  too: `rest.php` asks for it whenever `secure_rest_services` is on, whatever else the account
+  has. The consent page refuses an account `rest.php` would refuse, with a reason: that refusal
+  is part of what to look at once (step 6).
 - **The redirect URI of a hand-made client matches exactly**, byte for byte: scheme, host, port,
   path, case, a trailing slash. An administrator-created client skips the `redirect_uris`
   allowlist because *it is its own allowlist*, which also means no tolerance: a different port
@@ -38,14 +39,17 @@ written here true for any instance.
 ## 1. Create the two clients
 
 *Admin tools*, *OAuth clients*, *New*. For each, copy the secret before you save, since it is
-stored as a one-way hash, and the generated **Client ID** after.
+stored as a one-way hash, and the generated **Client ID** after. The two secret fields start
+with `*****` in them: empty both before pasting. Use a hex secret: a Basic header carries the ID
+and secret form-encoded (RFC 6749 §2.3.1), so a `+` from base64 would arrive as a space from any
+client that skips the encoding.
 
 | | Postman | Script |
 |---|---|---|
 | Name | `Manual test - Postman` | `Manual test - script` |
 | Redirect URIs | `https://oauth.pstmn.io/v1/browser-callback` | `http://127.0.0.1:8765/callback` |
 | Authentication | Secret, in an HTTP Basic header | Secret, in an HTTP Basic header |
-| Client secret | `openssl rand -base64 32` | `openssl rand -base64 32` |
+| Client secret | `openssl rand -hex 32` | `openssl rand -hex 32` |
 | PKCE | Required | Required |
 | Default resource | `rest` | `rest` |
 
@@ -97,7 +101,8 @@ ITOP = os.environ["ITOP"].rstrip("/")            # https://itop.altioo.com
 CLIENT_ID, SECRET = os.environ["CLIENT_ID"], os.environ["CLIENT_SECRET"]
 REDIRECT = "http://127.0.0.1:8765/callback"       # exactly as typed in the client
 BASE = f"{ITOP}/env-production/altioo-oauth-server/index.php"
-BASIC = "Basic " + base64.b64encode(f"{CLIENT_ID}:{SECRET}".encode()).decode()
+q = lambda v: urllib.parse.quote(v, safe="")     # RFC 6749 §2.3.1: form-encoded before joining
+BASIC = "Basic " + base64.b64encode(f"{q(CLIENT_ID)}:{q(SECRET)}".encode()).decode()
 
 def post(url, fields, headers=None):
     req = urllib.request.Request(url, urllib.parse.urlencode(fields).encode(), headers or {})
@@ -151,8 +156,9 @@ print("after revoke, refresh:", post(f"{BASE}?route=token", {"grant_type": "refr
 ITOP=https://<itop> CLIENT_ID=<id> CLIENT_SECRET=<secret> python3 itop_oauth_check.py
 ```
 
-The script has not been run: it is written from the endpoints' documented behaviour. If it fails
-for a reason of its own, fix the script, and do not count that against the module.
+On 2026-11-10 its requests were run one at a time from a version split into steps, with
+consent given in a browser signed in to the instance; this listing has not been run end to end.
+If it fails for a reason of its own, fix the script, and do not count that against the module.
 
 ## 4. What to look at, for each client
 
@@ -162,7 +168,7 @@ for a reason of its own, fix the script, and do not count that against the modul
 | 2 | Allow | Returns to the client with a code, `state` and `iss` |
 | 3 | Call `rest.php` with `Auth-Token` | `"code": 0` |
 | 4 | Refresh | A new access and refresh token; **the previous access token now answers `"code": 1`**; the connection still owns one token (*My Account*, *Personal Tokens*: one entry for the client, not a new one) |
-| 5 | Refresh again with the *previous* refresh token, at once | Accepted once (the grace period, 30 seconds); later, `invalid_grant` and the connection ends |
+| 5 | Refresh again with the *previous* refresh token, at once | Accepted (the grace period, 30 seconds); later, `invalid_grant`, "refresh token reused", and the connection ends. Only the token just before the current one counts as a reuse: an older one gets a plain `invalid_grant` and the connection stays |
 | 6 | Sign in as an account `rest.php` refuses | A page saying why, before consent |
 | 7 | Call `rest.php` with `Authorization: Bearer <token>` | `"code": 1`, as ADR 0003 says. If it works, an iTop release has changed and the README is out of date |
 | 8 | Change the redirect URI by one character (port, a trailing slash, `localhost` for `127.0.0.1`) | A page refusing the client, no redirect. Nothing is sent to the address |
@@ -186,19 +192,23 @@ Fill this in, with the date, the iTop and altioo-oauth-server versions and the P
 Then put what was proved, and only that, in the CHANGELOG and the README; ADR 0009's table is
 vendor documentation until this table says otherwise.
 
+**Script, 2026-11-10**: itop.altioo.com, iTop 3.2.3-2-20678, altioo-oauth-server 0.1.0. Python's
+standard library, the requests above run one step at a time; consent in a browser signed in as an
+administrator given *REST Services User* for the test. **Postman: not run.**
+
 | Check | Postman | Script |
 |---|---|---|
-| Consent page as expected (1) | | |
-| Code returned with `state` and `iss` (2) | | |
-| `rest.php` with `Auth-Token` (3) | | |
-| Refresh rotates, old access token refused, one token (4) | | |
-| Grace period (5) | | |
-| Refused account explained (6) | | |
-| Bearer refused (7) | | |
-| Near-miss redirect URI refused (8) | | |
-| Connection and history in the console (9, 10) | | |
-| Ended by the client, the person, an administrator (5) | | |
-| How the token was sent as `Auth-Token` (script, copy by hand, other) | | n/a |
+| Consent page as expected (1) | not run | Yes: the name with the note that the client chose it, `127.0.0.1`, *iTop's REST/JSON API* and its address, no grade |
+| Code returned with `state` and `iss` (2) | not run | Yes, `iss` = the issuer |
+| `rest.php` with `Auth-Token` (3) | not run | `"code": 0`; also with the `auth_token` parameter |
+| Refresh rotates, old access token refused, one token (4) | not run | Yes: both tokens new, the old access token `"code": 1`, one *Personal Token* row |
+| Grace period (5) | not run | Previous refresh token accepted within 30 s; 36 s later `invalid_grant`, "refresh token reused", and the current tokens refused |
+| Refused account explained (6) | not run | Yes: an administrator without *REST Services User* got "Not available for your account", HTTP 403, before consent |
+| Bearer refused (7) | not run | `"code": 1`, "Invalid login" |
+| Near-miss redirect URI refused (8) | not run | Port 8766, `/callback/`, `localhost`: "Unknown application", HTTP 400, no redirect, signed in or not |
+| Connection and history in the console (9, 10) | not run | One *Active* connection naming *iTop's REST/JSON API (rest)*; the token's history has its creation and one entry per refresh, by "OAuth: Manual test - script" |
+| Ended by the client, the person, an administrator (5) | not run | All three: `"code": 1` and `invalid_grant` after each; the administrator's left *Ended*, *Revoked* and no token row. The disabled client's next request: "Unknown application" |
+| How the token was sent as `Auth-Token` (script, copy by hand, other) | not run | n/a |
 
 ## What the automated checks already cover
 
