@@ -289,3 +289,89 @@ jobs:
             ${{ runner.temp }}/itop/log/
           retention-days: 7
           if-no-files-found: warn
+
+  # The contract with the real altioo-mcp, which the install job above cannot show: it installs
+  # the stand-in tools/ci/fixtures/altioo-mcp. Here the released altioo-mcp pinned in
+  # tools/ci/altioo-mcp-release.env takes its place (SHA-256 and GitHub attestation checked by
+  # tools/ci/fetch-altioo-mcp.sh) and the MCP half of tools/ci/checks/http-smoke.sh runs against
+  # it. Scheduled and on request only, so a change in altioo-mcp never blocks a pull request; a
+  # red run is "this pin and this module no longer agree", and moving the pin is a decision.
+  mcp-release:
+    name: Released altioo-mcp, iTop ${{ matrix.itop_release }} on PHP ${{ matrix.php }}
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: [versions, installable]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.versions.outputs.matrix) }}
+
+    services:
+      mariadb:
+        image: public.ecr.aws/docker/library/mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: itop
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Where the iTop under test is unpacked
+        run: echo "ITOP_DIR=$RUNNER_TEMP/itop" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2.40.0
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mysqli, gd, intl, mbstring, soap, zip, xml, ldap, opcache
+          ini-values: memory_limit=512M
+          coverage: none
+          tools: composer:v2
+
+      - name: Graphviz
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends graphviz
+
+      - name: Build the vendor tree that ships
+        run: composer install --no-dev --no-interaction --no-progress --optimize-autoloader
+
+      - name: The pinned altioo-mcp release, verified
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ALTIOO_MCP_REQUIRE_ATTESTATION: '1'
+        run: tools/ci/fetch-altioo-mcp.sh "$RUNNER_TEMP/released"
+
+      - name: Unattended install, altioo-mcp from its release instead of the stand-in
+        env:
+          ITOP_ZIP_URL: ${{ matrix.zip_url }}
+          FIXTURE_RELEASES_DIR: ${{ runner.temp }}/released
+        run: tools/ci/install-itop.sh
+
+      - name: Datamodel checks, then the MCP grant over HTTP
+        env:
+          MCP_UNDER_TEST: release
+        run: |
+          set -euo pipefail
+          out=$(php tools/ci/itop-smoke.php "$ITOP_DIR" "$ITOP_ADMIN_USER")
+          token=$(printf '%s\n' "$out" | sed -n 's/^http-smoke-token: //p')
+          echo "::add-mask::$token"
+          printf '%s\n' "$out" | grep -v '^http-smoke-token: ' || true
+          ITOP_TOKEN="$token" tools/ci/http-smoke.sh
+
+      - name: Keep the logs of a failed run
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mcp-release-${{ matrix.itop_release }}-php${{ matrix.php }}-logs
+          path: |
+            ${{ runner.temp }}/itop/ci-install.log
+            ${{ runner.temp }}/itop/ci-httpd.log
+            ${{ runner.temp }}/itop/log/
+          retention-days: 7
+          if-no-files-found: warn

@@ -40,6 +40,10 @@ holds the `mcp` resource's URL, grades, limit, portal grades and required profil
 `http-smoke.sh` runs the flow: the grades on the consent page, the refusal of an account without
 a required profile, the portal-only account's grades, a token held to its URL through
 `TokenAudience` (refused at another `?portal_id=` URL, and a REST/JSON token refused at the MCP
-endpoint), and the resource's metadata. What this does not show is how the real altioo-mcp reads
-a token or whether the two modules still agree. A scheduled job that installs a released
-altioo-mcp is a follow-up and not built.
+endpoint), and the resource's metadata. That shows this module agreeing with a stand-in, which
+agrees with it by construction. Whether the real altioo-mcp reads a token the same way is shown
+weekly, not per change: the `mcp-release` job of `itop-matrix.yml` installs the altioo-mcp release
+pinned in `tools/ci/altioo-mcp-release.env` (SHA-256 and attestation checked) in place of the
+stand-in and runs the same flow over MCP against it. It does not run on pull requests and does
+not block them; a release newer than the pin is not tried until the pin is moved
+([doc/ci-itop-matrix.md](../ci-itop-matrix.md), "The real altioo-mcp, weekly").
