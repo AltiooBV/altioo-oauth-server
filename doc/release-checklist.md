@@ -62,6 +62,8 @@ not repeat these — *Every release* below is the recurring list.
       as the release gate in the design note says; record what was tested in the changelog.
       2026-11-04: narrowed by the maintainer. Tested on itop.altioo.com with Claude Code, Claude
       Desktop and claude.ai on the web; the hand-configured client is recorded as untested.
+      2026-11-10: the script client tested there, Postman not
+      (`doc/manual-test-hand-configured-client.md`).
 - [x] **Complete the README** against the guide's §9.3. 2026-10-28, before any release: check
       it again against what 0.1.0 actually ships, the upgrade procedure in particular.
 - [x] **Write `doc/security-summary.md`**, the page an approver reads (guide §9.8).

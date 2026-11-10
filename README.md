@@ -109,8 +109,10 @@ is the allowlist. It therefore matches a redirect URI exactly, byte for byte.
   `allow_loopback`.
 - `auth_token` as a URL parameter is the last resort, because a URL ends up in access logs. Use
   the header, or a POST body.
-- No REST/JSON client has been tested yet. [doc/manual-test-hand-configured-client.md](doc/manual-test-hand-configured-client.md)
-  is the procedure for trying Postman and a script, and the results table in it is empty.
+- A script over a fixed loopback port was tested on a real instance on 2026-11-10, Postman not
+  yet: [doc/manual-test-hand-configured-client.md](doc/manual-test-hand-configured-client.md)
+  has the procedure and what was observed. An administrator account needs *REST Services User*
+  for REST/JSON too, unless `allow_rest_services_via_tokens` is set.
 
 Clients that register through a client ID metadata document (CIMD) are not supported, although
 the MCP specification's latest revision prefers them to dynamic registration, which it keeps for
